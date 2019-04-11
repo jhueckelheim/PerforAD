@@ -11,13 +11,34 @@ class Loop:
 
   def __str__(self):
     try:
+      # Try and remove loops with 0 iterations.
+      if(self.end-self.start<0):
+        return ""
+    except TypeError:
+      # If start or end contain sympy.Symbols, the relation can not be known
+      # and this throws an error. We ignore this and assume that the loop may
+      # have more than 0 iterations (it does not matter if this turns out to
+      # be false at runtime, just adds dead code).
+      pass
+    try:
+      # Try to join the list of statements in the loop body together.
+      # If this fails, there is only one statement (no list).
       outlist = []
       for stmt in self.body:
-        outlist.append(textwrap.indent(str(stmt),4*" "))
+        outlist.append(str(stmt))
       res = "\n".join(outlist)
     except TypeError:
-      res = textwrap.indent(str(self.body),4*" ")
-    return "do %s=%s,%s\n%s\nend do"%(self.counter,self.start,self.end,res)
+      res = str(self.body)
+    try:
+      # Try and simplify loops with only one iteration (print the loop
+      # body, and assign the correct value to the counter variable).
+      if(self.end-self.start==0):
+        return "%s=%s\n%s"%(self.counter,self.start,res)
+    except TypeError:
+      # If that failed, perhaps the loop bounds are again symbolic. Print the
+      # loop, everything will be fine at runtime.
+      pass
+    return "do %s=%s,%s\n%s\nend do"%(self.counter,self.start,self.end,textwrap.indent(str(res),4*" "))
 
   def diff(self, invar_b, outvar_b):
     body_b = self.body.diff(invar_b, outvar_b)
@@ -87,10 +108,6 @@ f = sp.Function('f')(l,c,r)
 stexpr = StencilExpression(outvar, invar, i, [-1,0,1],f)
 lpinner = Loop(body=stexpr, counter=i, start=2, end=n-1)
 print(lpinner)
-
-for o,e in (stexpr.diff(invar_b, outvar_b)):
-  print(o)
-  print(e)
 
 for l in (lpinner.diff(invar_b, outvar_b)):
   print(l)
