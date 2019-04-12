@@ -55,8 +55,6 @@ class Loop:
     loops_pre.append(Loop(body=list(map(itemgetter(1),body_b)),counter=self.counter,start=self.start+body_b[-1][0],end=self.end+body_b[0][0]))
     return loops_pre+loops_post
       
-    
-
 # TODO separate presentation/API from logic.
 # StencilExpression should only deal with whatever is necessary for the logic,
 # and can be extended by a FortranStencilExpression / SympyStencilExpression that
@@ -66,51 +64,88 @@ class StencilExpression:
     self.outvar     = outvar
     self.invar      = invar
     self.idx_out    = idx_out   # should be a loop counter (e.g. i)
-    self.offset_in  = offset_in # should be a list of constant numbers (e.g. [-1,0,1])
+    self.offset_in  = offset_in # should be a list of constant offsets (e.g. [i-1,i,i+1])
     self.func       = func
 
-  def _argstr_(self,invar,offsets):
-    return ", ".join(map(lambda idx: "%s[%s]"%(invar,self.idx_out+idx), offsets))
-
   def __str__(self):
-    args = ""
-    res = ""
-    try:
-      inlist = []
-      for (var,offsets) in list(zip(self.invar,self.offset_in)):
-        inlist.append(self._argstr_(var,offsets))
-      args = ", ".join(inlist)
-    except TypeError:
-      args = self._argstr_(self.invar,self.offset_in)
-    try:
-      outlist = []
-      for var in self.outvar:
-        outlist.append("%s[%s]"%(var,self.idx_out))
-      res = ", ".join(outlist)
-    except TypeError:
-      res = "%s[%s]"%(self.outvar,self.idx_out)
-    return "%s = %s(%s)"%(res,self.func.__str__(),args)
+    # Go through the list of input vars and their corresponding list of offsets
+    args = []
+    for (var,offsets) in list(zip(self.invar,self.offset_in)):
+      # Print the var with each offset as an index
+      for ofs in offsets:
+        # The offset and the array index can have multiple dimensions
+        idxlist = []
+        for dim,of in list(zip(self.idx_out,ofs)):
+          idxlist.append(str( dim+of ))
+        args.append("%s[%s]"%(var,",".join(idxlist)))
+      lhsargs = ",".join(map(lambda x: str(x),self.idx_out))
+      lhs = "%s[%s]"%(self.outvar,lhsargs)
+    return "%s = %s(%s)"%(lhs,self.func.__str__(),", ".join(args))
 
   def diff(self,invar_b,outvar_b):
+    # All invars and offsets given to the StencilExpression are
+    # zipped so that each offset has the correct invar, like so:
+    # [(invar, [(i, -1)]), (invar, [(i, 0)]), (invar, [(i, 1)])]
+    inputs = []
+    for (var,offsets) in list(zip(self.invar,self.offset_in)):
+      # Print the var with each offset as an index
+      for ofs in offsets:
+        # The offset and the array index can have multiple dimensions
+        idxlist = list(zip(self.idx_out,ofs))
+        inputs.append((var,idxlist))
     exprs = []
-    for arg,offset in list(zip(self.func.args,self.offset_in)):
+    # zip the list of function arguments and input variables
+    for arg,inp in list(zip(self.func.args,inputs)):
+      # Differentiate the function wrt. the current input
       func_d = self.func.diff(arg)
-      expr_d = StencilExpression(invar_b,[invar,outvar_b],self.idx_out,[self.offset_in,[-offset]],func_d)
-      exprs.append((offset,expr_d))
+      # inpvar is the name of the current input variable.
+      # inpidx is a tuple of counter variable (e.g. i) and offset (e.g. -1)
+      inpvar, inpidx = inp
+      # The output index of the diff'ed expression will be the same as that of
+      # the primal expression (that's the whole point of this transformation)
+      outidx = self.idx_out
+      # We shift all other indices by the offset in inpidx to make this correct
+      shifted_idx_in = []
+      for (var,offsets) in list(zip(self.invar,self.offset_in)):
+        idxlist = []
+        for ofs in offsets:
+          idxlist.append(list(map(lambda x: (x[1]+x[2][1]),zip(self.idx_out,ofs,inpidx))))
+        shifted_idx_in.append(idxlist)
+      shifted_idx_in.append([list(map(lambda x: (x[1]),inpidx))])
+      expr_d = StencilExpression(outvar = invar_b, invar = self.invar+[outvar_b], idx_out = outidx, offset_in = shifted_idx_in, func = func_d)
+      exprs.append((inpidx,expr_d))
     return exprs
       
 
-i, j, n, l, c, r = sp.symbols('i, j, n, l, c, r')
+i, j, n, l, c, r, t, b = sp.symbols('i, j, n, l, c, r, t, b')
 outvar, putvar, invar, jnvar = sp.symbols('outvar, putvar, invar, jnvar')
 outvar_b, invar_b = sp.symbols('outvar_b, invar_b')
 f = sp.Function('f')(l,c,r)
+f2d = sp.Function('f2d')(l,b,c,r,t)
 
-stexpr = StencilExpression(outvar, invar, i, [-1,0,1],f)
-lpinner = Loop(body=stexpr, counter=i, start=2, end=n-1)
-print(lpinner)
+stexpr = StencilExpression(outvar, [invar], [i], [[[-1],[0],[1]]],f)
+loop1d = Loop(body=stexpr, counter=i, start=2, end=n-1)
+print(loop1d)
 
-for l in (lpinner.diff(invar_b, outvar_b)):
+stexpr2d = StencilExpression(outvar, [invar,jnvar], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
+loop2dinner = Loop(body=stexpr2d, counter=i, start=2, end=n-1)
+loop2douter = Loop(body=loop2dinner, counter=i, start=2, end=n-1)
+print(loop2douter)
+
+for l,e in (stexpr.diff(invar_b, outvar_b)):
   print(l)
+  print(e)
+for l,e in (stexpr2d.diff(invar_b, outvar_b)):
+  print(l)
+  print(e)
+#
+#stexpr = StencilExpression(outvar, [invar], [i,j], [[-1,0],[0,-1],[0,0],[1,0],[0,1]],f2d)
+#lpinner = Loop(body=stexpr, counter=i, start=2, end=n-1)
+#lpouter = Loop(body=lpinner, counter=j, start=2, end=n-1)
+#print(lpouter)
+#
+#for l in (lpouter.diff(invar_b, outvar_b)):
+#  print(l)
 
 #stexpr = StencilExpression([outvar,putvar], [invar,jnvar], i, [[-1,0,1],[0]],f)
 #lpinner = Loop(body=stexpr, counter=i, start=2, end=n-1)
