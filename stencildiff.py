@@ -41,18 +41,38 @@ class Loop:
     return "do %s=%s,%s\n%s\nend do"%(self.counter,self.start,self.end,textwrap.indent(str(res),4*" "))
 
   def diff(self, invar_b, outvar_b):
+    # Call the differentiation method of the loop body. This will return
+    # a list of objects (can be loops or stencil expressions) zipped with
+    # a list of offsets in all dimensions.
     body_b = self.body.diff(invar_b, outvar_b)
-    body_b.sort(key=itemgetter(0))
+    # Sort the list based on the offset in the dimension that is the
+    # loop counter of the current loop
+    body_b.sort(key=lambda x: x[0][self.counter])
+    # Create a list of loops, containing the core loop and all remainder
+    # loops, each loop containing the appropriate loop body. We build two
+    # lists (pre and post) for the remainder loops before and after the
+    # core loop. This is only for pretty-printing, everything could go in
+    # one list.
     loops_pre = []
     loops_post = []
     for i in range(len(body_b)-1):
-      offs_0,stmt_0 = body_b[i]
-      offs_1,stmt_1 = body_b[i+1]
+      # Get a statement and its offset dict (e.g. {i: -1, j: 0})
+      offsets_0,stmt_0 = body_b[i]
+      offsets_1,stmt_1 = body_b[i+1]
+      # Get only the offset for the current loop dimension (e.g. i)
+      offs_0 = offsets_0[self.counter]
+      offs_1 = offsets_1[self.counter]
+      # Get all statements that need to be part of the body of this prequel loop
       stmts_pre  = list(map(itemgetter(1),body_b))[slice(0,i+1)]
+      # Get all statements that need to be part of the body of this sequel loop
       stmts_post = list(map(itemgetter(1),body_b))[slice(i+1,len(body_b))]
+      # Create loops with the already collected loop bodies and the appropriate
+      # loop bounds.
       loops_pre.append(Loop(body=stmts_pre,counter=self.counter,start=self.start+offs_0,end=self.start+offs_1-1))
       loops_post.append(Loop(body=stmts_post,counter=self.counter,start=self.end+offs_0+1,end=self.end+offs_1))
-    loops_pre.append(Loop(body=list(map(itemgetter(1),body_b)),counter=self.counter,start=self.start+body_b[-1][0],end=self.end+body_b[0][0]))
+    # Finally, create the core loop
+    loops_pre.append(Loop(body=list(map(itemgetter(1),body_b)),counter=self.counter,start=self.start+body_b[-1][0][self.counter],end=self.end+body_b[0][0][self.counter]))
+    # Return list of all loops
     return loops_pre+loops_post
       
 # TODO separate presentation/API from logic.
@@ -109,11 +129,11 @@ class StencilExpression:
       for (var,offsets) in list(zip(self.invar,self.offset_in)):
         idxlist = []
         for ofs in offsets:
-          idxlist.append(list(map(lambda x: (x[1]+x[2][1]),zip(self.idx_out,ofs,inpidx))))
+          idxlist.append(list(map(lambda x: (x[1]-x[2][1]),zip(self.idx_out,ofs,inpidx))))
         shifted_idx_in.append(idxlist)
-      shifted_idx_in.append([list(map(lambda x: (x[1]),inpidx))])
+      shifted_idx_in.append([list(map(lambda x: (-x[1]),inpidx))])
       expr_d = StencilExpression(outvar = invar_b, invar = self.invar+[outvar_b], idx_out = outidx, offset_in = shifted_idx_in, func = func_d)
-      exprs.append((inpidx,expr_d))
+      exprs.append((dict(inpidx),expr_d))
     return exprs
       
 
@@ -125,19 +145,20 @@ f2d = sp.Function('f2d')(l,b,c,r,t)
 
 stexpr = StencilExpression(outvar, [invar], [i], [[[-1],[0],[1]]],f)
 loop1d = Loop(body=stexpr, counter=i, start=2, end=n-1)
-print(loop1d)
+#print(loop1d)
+#for l in (loop1d.diff(invar_b, outvar_b)):
+#  print(l)
 
 stexpr2d = StencilExpression(outvar, [invar,jnvar], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
 loop2dinner = Loop(body=stexpr2d, counter=i, start=2, end=n-1)
 loop2douter = Loop(body=loop2dinner, counter=i, start=2, end=n-1)
 print(loop2douter)
+for l in (loop2dinner.diff(invar_b, outvar_b)):
+  print(l)
 
-for l,e in (stexpr.diff(invar_b, outvar_b)):
-  print(l)
-  print(e)
-for l,e in (stexpr2d.diff(invar_b, outvar_b)):
-  print(l)
-  print(e)
+#for l,e in (stexpr2d.diff(invar_b, outvar_b)):
+#  print(l)
+#  print(e)
 #
 #stexpr = StencilExpression(outvar, [invar], [i,j], [[-1,0],[0,-1],[0,0],[1,0],[0,1]],f2d)
 #lpinner = Loop(body=stexpr, counter=i, start=2, end=n-1)
