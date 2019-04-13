@@ -117,6 +117,40 @@ class _Loop_:
       pass
     return "do %s=%s,%s\n%s\nend do"%(self.counter,self.start,self.end,textwrap.indent(str(res),4*" "))
 
+class SympyFuncStencil:
+  def __init__(self, name, args):
+    self.name = name
+    self.args = args
+
+  def __str__(self):
+    return str(self.name)
+
+  def at(self,inputs):
+    argstr = ", ".join(map(lambda arg: "%s=%s"%(arg[0],arg[1]), zip(self.args,inputs)))
+    return "%s(%s)"%(self.name,argstr)
+
+  def diff(self,wrt):
+    diffname = "%s_d"%self.name
+    diffargs = self.args + ["%s_d"%wrt]
+    return SympyFuncStencil(diffname,diffargs)
+
+class SympyExprStencil:
+  def __init__(self, expr, args, inputs = None):
+    self.expr = expr
+    self.args = args
+
+  def __str__(self):
+    return self.expr
+
+  def at(self,inputs):
+    return self.expr.subs(inputs)
+
+  def args(self):
+    return self.args
+
+  def diff(self,wrt):
+    return SympyExprStencil(self.expr.diff(wrt),self.args)
+
 # TODO separate presentation/API from logic.
 # StencilExpression should only deal with whatever is necessary for the logic,
 # and can be extended by a FortranStencilExpression / SympyStencilExpression that
@@ -138,11 +172,11 @@ class StencilExpression:
         # The offset and the array index can have multiple dimensions
         idxlist = []
         for dim,of in list(zip(self.idx_out,ofs)):
-          idxlist.append(str( dim+of ))
-        args.append("%s[%s]"%(var,",".join(idxlist)))
+          idxlist.append(dim+of)
+        args.append(var(*idxlist))
       lhsargs = ",".join(map(lambda x: str(x),self.idx_out))
       lhs = "%s[%s]"%(self.outvar,lhsargs)
-    return "%s = %s(%s)"%(lhs,self.func.__str__(),", ".join(args))
+    return "%s = %s"%(lhs,self.func.at(args))
 
   def diff(self,invar_b,outvar_b):
     # All invars and offsets given to the StencilExpression are
@@ -180,172 +214,38 @@ class StencilExpression:
       
 
 i, j, n, l, c, r, t, b, lb, rt, lt, rb = sp.symbols('i, j, n, l, c, r, t, b, lb, rt, lt, rb')
-outvar, putvar, invar, jnvar = sp.symbols('outvar, putvar, invar, jnvar')
-outvar_b, invar_b = sp.symbols('outvar_b, invar_b')
-f = sp.Function('f')(l,c,r)
-f2d = sp.Function('f2d')(l,b,c,r,t)
-f2df = sp.Function('f2d')(l,b,lb,c,r,t,rt,lt,rb)
+outvar = sp.Function('outvar')
+invar = sp.Function('invar')
+jnvar = sp.Function('jnvar')
+outvar_b = sp.Function('outvar_b')
+invar_b = sp.Function('invar_b')
 
+#f = SympyFuncStencil("f",[l,c,r])
+#stexpr = StencilExpression(outvar, [invar], [i], [[[-1],[0],[1]]],f)
+#loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
+#print(loop1d)
+#for lp in (loop1d.diff(invar_b, outvar_b)):
+#  print(lp)
+#
+#f2d = SympyFuncStencil("f",[l,b,c,r,t])
+#stexpr2d = StencilExpression(outvar, [invar,jnvar], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
+#loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
+#print(loop2d)
+#for lp in (loop2d.diff(invar_b, outvar_b)):
+#  print(lp)
+
+f = SympyExprStencil("f",[l,c,r])
 stexpr = StencilExpression(outvar, [invar], [i], [[[-1],[0],[1]]],f)
 loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
 print(loop1d)
-for l in (loop1d.diff(invar_b, outvar_b)):
-  print(l)
+for lp in (loop1d.diff(invar_b, outvar_b)):
+  print(lp)
 
-stexpr2d = StencilExpression(outvar, [invar,jnvar], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
-loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
-print(loop2d)
-for l in (loop2d.diff(invar_b, outvar_b)):
-  print(l)
-
-stexpr2df = StencilExpression(outvar, [invar], [i,j], [[[-1,0],[0,-1],[-1,-1],[0,0],[1,0],[0,1],[1,1],[-1,1],[1,-1]]],f2df)
-loop2df = LoopNest(body=stexpr2df, bounds={i:[2,n-1],j:[2,n-1]})
-print(loop2df)
-for l in (loop2df.diff(invar_b, outvar_b)):
-  print(l)
-#for l,e in (stexpr2d.diff(invar_b, outvar_b)):
+#f2d = sp.Function('f2d')(l,b,c,r,t)
+#f2df = sp.Function('f2d')(l,b,lb,c,r,t,rt,lt,rb)
+#
+#stexpr2df = StencilExpression(outvar, [invar], [i,j], [[[-1,0],[0,-1],[-1,-1],[0,0],[1,0],[0,1],[1,1],[-1,1],[1,-1]]],f2df)
+#loop2df = LoopNest(body=stexpr2df, bounds={i:[2,n-1],j:[2,n-1]})
+#print(loop2df)
+#for l in (loop2df.diff(invar_b, outvar_b)):
 #  print(l)
-#  print(e)
-#
-#stexpr = StencilExpression(outvar, [invar], [i,j], [[-1,0],[0,-1],[0,0],[1,0],[0,1]],f2d)
-#lpinner = Loop(body=stexpr, counter=i, start=2, end=n-1)
-#lpouter = Loop(body=lpinner, counter=j, start=2, end=n-1)
-#print(lpouter)
-#
-#for l in (lpouter.diff(invar_b, outvar_b)):
-#  print(l)
-
-#stexpr = StencilExpression([outvar,putvar], [invar,jnvar], i, [[-1,0,1],[0]],f)
-#lpinner = Loop(body=stexpr, counter=i, start=2, end=n-1)
-#lpouter = Loop(body=lpinner, counter=j, start=1, end=n)
-#print(lpouter)
-
-#def Jacobi(f):
-#  return [f.diff(x) for x in f.free_symbols]
-#
-#def Hessian(f):
-#  return [[f.diff(x).diff(y) for x in f.free_symbols] for y in f.free_symbols]
-#
-#ul = sp.Symbol('ul')
-#uc = sp.Symbol('uc')
-#ur = sp.Symbol('ur')
-#
-#f_const = 0.1*ul + 0.2*uc + 0.3*ur
-#f_centralself = 0.1*ul + 0.2*uc*uc + 0.3*ur
-#f_allself = 0.1*ul*ul + 0.2*uc*uc + 0.3*ur*ur
-#f_pairwise = 0.1*ul*uc + 0.2*uc*uc + 0.3*ur*uc
-#f_alltoall = 0.1*ul*ul * 0.2*uc*uc * 0.3*ur*ur
-#
-#
-#for func in [f_const, f_centralself, f_allself, f_pairwise, f_alltoall]:
-#  print(func)
-#  print(Jacobi(func))
-#  print(Hessian(func))
-#  print()
-#
-#do i=2,n-1
-#  r_i = c1*u_i + c2*u_{i-1} + c3*u_{i+1}
-#end do
-#
-#read write minidx maxidx
-#i,   i,    2,     n-1 // c1
-#i-1, i,    2,     n-1 // c2
-#i+1, i,    2,     n-1 // c3
-#------- transform -------
-#i,   i,    2,     n-1           // c1
-#i,   i+1,  1,     n-2  [+1, -1] // c2
-#i,   i-1,  3,     n    [-1, +1] // c3
-#------- intersect -------
-#do i=1,1
-#  r_{i+1} += c2*u_i
-#end do
-#do i=2,2
-#  r_i     += c1*u_i
-#  r_{i+1} += c2*u_i
-#end do
-#do i=3,n-2
-#  r_i     += c1*u_i
-#  r_{i+1} += c2*u_i
-#  r_{i-1} += c3*u_i
-#end do
-#do i=n-1,n-1
-#  r_i     += c1*u_i
-#  r_{i-1} += c3*u_i
-#end do
-#do i=n,n
-#  r_{i-1} += c3*u_i
-#end do
-#-------  unroll   -------
-#r_2 += c2*u_2
-#r_2 += c1*u_2
-#r_3 += c2*u_2
-#do i=3,n-2
-#  r_i     += c1*u_i
-#  r_{i+1} += c2*u_i
-#  r_{i-1} += c3*u_i
-#end do
-#r_{n-1} += c1*u_{n-1}
-#r_{n-2} += c3*u_{n-1}
-#r_{n-1} += c3*u_{n-1}
-#
-#
-
-#do i=1,n
-#  do j=1,n
-#    r(i,j) = 1*u(i-1,j)+2*u(i,j-1)+3*u(i,j)+4*u(i+1,j)+5*u(i,j+1)
-#
-#do i=1,n
-#  do j=1,n
-#    u(i-1,j) += 1*rb(i,j)
-#    u(i,j-1) += 2*rb(i,j)
-#    u(i,j)   += 3*rb(i,j)
-#    u(i+1,j) += 4*rb(i,j)
-#    u(i,j+1) += 5*rb(i,j)
-#
-#do i=1,n
-#  do j=1,n
-#    u(i,j) += 1*rb(i+1,j) [i=0,n-1; j=1,n]
-#    u(i,j) += 2*rb(i,j+1) [i=1,n; j=0,n-1]
-#    u(i,j) += 3*rb(i,j)   [i=1,n; j=1,n]
-#    u(i,j) += 4*rb(i-1,j) [i=2,n+1; j=1,n]
-#    u(i,j) += 5*rb(i,j-1) [i=1,n; j=2,n+1]
-#
-#Outer loop returns:
-#  core loop i=2,n-1
-#  prequel   i=0,1
-#  sequel    i=n,n+1
-#
-#Inner loop returns:
-#  core loop j=2,n-1
-#  prequel   j=0,1
-#  sequel    j=n,n+1
-#do i=2,n-1
-#  do j=2,n-1
-#    u(i,j) += 1*rb(i+1,j)
-#    u(i,j) += 2*rb(i,j+1)
-#    u(i,j) += 3*rb(i,j)
-#    u(i,j) += 4*rb(i-1,j)
-#    u(i,j) += 5*rb(i,j-1)
-#do i=0,1
-#  do j=0,n+1
-#    if [i=0,n-1; j=1,n]: u(i,j) += 1*rb(i+1,j)
-#    if [i=1,n; j=0,n-1]: u(i,j) += 2*rb(i,j+1)
-#    if [i=1,n; j=1,n]  : u(i,j) += 3*rb(i,j)  
-#    if [i=1,n; j=2,n+1]: u(i,j) += 5*rb(i,j-1)
-#do i=2,n-1
-#  do j=0,1
-#    if [i=0,n-1; j=1,n]: u(i,j) += 1*rb(i+1,j)
-#    if [i=1,n; j=0,n-1]: u(i,j) += 2*rb(i,j+1)
-#    if [i=1,n; j=1,n]  : u(i,j) += 3*rb(i,j)  
-#    if [i=2,n+1; j=1,n]: u(i,j) += 4*rb(i-1,j)
-#  do j=n,n+1
-#    if [i=0,n-1; j=1,n]: u(i,j) += 1*rb(i+1,j)
-#    if [i=1,n; j=1,n]  : u(i,j) += 3*rb(i,j)  
-#    if [i=2,n+1; j=1,n]: u(i,j) += 4*rb(i-1,j)
-#    if [i=1,n; j=2,n+1]: u(i,j) += 5*rb(i,j-1)
-#do i=n,n+1
-#  do j=0,n+1
-#    if [i=1,n; j=0,n-1]: u(i,j) += 2*rb(i,j+1)
-#    if [i=1,n; j=1,n]  : u(i,j) += 3*rb(i,j)  
-#    if [i=2,n+1; j=1,n]: u(i,j) += 4*rb(i-1,j)
-#    if [i=1,n; j=2,n+1]: u(i,j) += 5*rb(i,j-1)
