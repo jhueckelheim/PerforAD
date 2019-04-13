@@ -2,7 +2,72 @@ import sympy as sp
 import textwrap
 from operator import itemgetter
 
-class Loop:
+class LoopNest:
+  def __init__(self,body,bounds):
+    self.body = body
+    self.counters = list(bounds.keys())
+    self.bounds = bounds
+    for counter in self.counters:
+      start = bounds[counter][0]
+      end = bounds[counter][1]
+      body = _Loop_(body,counter,start,end)
+    self.loop = body
+
+  def __str__(self):
+    return str(self.loop)
+
+  def diff(self, invar_b, outvar_b):
+    body_b = self.body.diff(invar_b, outvar_b)
+    # A nest is a tuple that contains
+    #  - a list containing (offset, statement) tuples
+    #  - a dict with {counter: loop bounds}
+    # This method takes a nest, and splits it up into several nests
+    # such that each nest will iterate over a subset of the original domain,
+    # and contains only the statements that are valid in that subset.
+    nestlist = [(body_b,self.bounds)]
+    # This loop goes over all dimensions. In each dimension, nestlist is replaced
+    # with a new nestlist that has been split in that dimension.
+    for counter in self.counters:
+      # This loop goes over all nests. Each nest may get split into several new
+      # nests, which are appended to newnestlist.
+      for nest,nestbound in nestlist:
+        newnestlist = []
+        nest.sort(key=lambda x: x[0][counter])
+        for i in range(len(nest)-1):
+          # Get a statement and its offset dict
+          offsets_0,stmt_0 = nest[i]
+          offsets_1,stmt_1 = nest[i+1]
+          # Get only the offset for the current loop dimension
+          offs_0 = offsets_0[counter]
+          offs_1 = offsets_1[counter]
+          # Get all statements that need to be part of the body of this prequel loop
+          stmts_pre  = nest[slice(0,i+1)]
+          # Get all statements that need to be part of the body of this sequel loop
+          stmts_post = nest[slice(i+1,len(nest))]
+          # Compute the new loop bounds after applying offsets
+          bounds_pre = nestbound.copy()
+          bounds_post = nestbound.copy()
+          bounds_pre[counter] = nestbound[counter][0]+offs_0,nestbound[counter][0]+offs_1-1
+          bounds_post[counter] = nestbound[counter][1]+offs_0+1,nestbound[counter][1]+offs_1-1
+          # Append the nest to the new list of nests
+          newnestlist.append((stmts_pre,bounds_pre))
+          newnestlist.append((stmts_post,bounds_post))
+        # Finally, create the core loop and append it to the new list of nests
+        stmts_core = nest
+        bounds_core = nestbound.copy()
+        bounds_core[counter] = nestbound[counter][0]+nest[-1][0][counter],nestbound[counter][1]+nest[0][0][counter]
+        newnestlist.append((stmts_core,bounds_core))
+      # Replace the old nest list with the refined one, ready for the next iteration
+      nestlist = newnestlist
+    # Finally, take all nests and turn them into actual LoopNest objects.
+    loops = []
+    for body_b,nestbound in nestlist:
+      statements = map(itemgetter(1),body_b)
+      print(nestbound)
+      loops.append(LoopNest(statements,nestbound))
+    return loops
+
+class _Loop_:
   def __init__(self,body,counter,start,end):
     self.counter = counter
     self.start   = start
@@ -40,41 +105,6 @@ class Loop:
       pass
     return "do %s=%s,%s\n%s\nend do"%(self.counter,self.start,self.end,textwrap.indent(str(res),4*" "))
 
-  def diff(self, invar_b, outvar_b):
-    # Call the differentiation method of the loop body. This will return
-    # a list of objects (can be loops or stencil expressions) zipped with
-    # a list of offsets in all dimensions.
-    body_b = self.body.diff(invar_b, outvar_b)
-    # Sort the list based on the offset in the dimension that is the
-    # loop counter of the current loop
-    body_b.sort(key=lambda x: x[0][self.counter])
-    # Create a list of loops, containing the core loop and all remainder
-    # loops, each loop containing the appropriate loop body. We build two
-    # lists (pre and post) for the remainder loops before and after the
-    # core loop. This is only for pretty-printing, everything could go in
-    # one list.
-    loops_pre = []
-    loops_post = []
-    for i in range(len(body_b)-1):
-      # Get a statement and its offset dict (e.g. {i: -1, j: 0})
-      offsets_0,stmt_0 = body_b[i]
-      offsets_1,stmt_1 = body_b[i+1]
-      # Get only the offset for the current loop dimension (e.g. i)
-      offs_0 = offsets_0[self.counter]
-      offs_1 = offsets_1[self.counter]
-      # Get all statements that need to be part of the body of this prequel loop
-      stmts_pre  = list(map(itemgetter(1),body_b))[slice(0,i+1)]
-      # Get all statements that need to be part of the body of this sequel loop
-      stmts_post = list(map(itemgetter(1),body_b))[slice(i+1,len(body_b))]
-      # Create loops with the already collected loop bodies and the appropriate
-      # loop bounds.
-      loops_pre.append(Loop(body=stmts_pre,counter=self.counter,start=self.start+offs_0,end=self.start+offs_1-1))
-      loops_post.append(Loop(body=stmts_post,counter=self.counter,start=self.end+offs_0+1,end=self.end+offs_1))
-    # Finally, create the core loop
-    loops_pre.append(Loop(body=list(map(itemgetter(1),body_b)),counter=self.counter,start=self.start+body_b[-1][0][self.counter],end=self.end+body_b[0][0][self.counter]))
-    # Return list of all loops
-    return loops_pre+loops_post
-      
 # TODO separate presentation/API from logic.
 # StencilExpression should only deal with whatever is necessary for the logic,
 # and can be extended by a FortranStencilExpression / SympyStencilExpression that
@@ -144,17 +174,16 @@ f = sp.Function('f')(l,c,r)
 f2d = sp.Function('f2d')(l,b,c,r,t)
 
 stexpr = StencilExpression(outvar, [invar], [i], [[[-1],[0],[1]]],f)
-loop1d = Loop(body=stexpr, counter=i, start=2, end=n-1)
-#print(loop1d)
-#for l in (loop1d.diff(invar_b, outvar_b)):
-#  print(l)
+loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
+print(loop1d)
+for l in (loop1d.diff(invar_b, outvar_b)):
+  print(l)
 
 stexpr2d = StencilExpression(outvar, [invar,jnvar], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
-loop2dinner = Loop(body=stexpr2d, counter=i, start=2, end=n-1)
-loop2douter = Loop(body=loop2dinner, counter=i, start=2, end=n-1)
-print(loop2douter)
-for l in (loop2dinner.diff(invar_b, outvar_b)):
-  print(l)
+loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
+print(loop2d)
+#for l in (loop2d.diff(invar_b, outvar_b)):
+#  print(l)
 
 #for l,e in (stexpr2d.diff(invar_b, outvar_b)):
 #  print(l)
