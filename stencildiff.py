@@ -2,6 +2,8 @@ import sympy as sp
 import textwrap
 from operator import itemgetter
 
+#verboseprint = print if verbose else lambda *a, **k: None
+
 class LoopNest:
   def __init__(self,body,bounds):
     self.body = body
@@ -67,6 +69,7 @@ class LoopNest:
         print("    core %s"%bounds_core)
         newnestlist.append((stmts_core,bounds_core))
       # Replace the old nest list with the refined one, ready for the next iteration
+      print(newnestlist)
       nestlist = newnestlist
     # Finally, take all nests and turn them into actual LoopNest objects.
     loops = []
@@ -176,11 +179,12 @@ class StencilExpression:
     return exprs
       
 
-i, j, n, l, c, r, t, b = sp.symbols('i, j, n, l, c, r, t, b')
+i, j, n, l, c, r, t, b, lb, rt, lt, rb = sp.symbols('i, j, n, l, c, r, t, b, lb, rt, lt, rb')
 outvar, putvar, invar, jnvar = sp.symbols('outvar, putvar, invar, jnvar')
 outvar_b, invar_b = sp.symbols('outvar_b, invar_b')
 f = sp.Function('f')(l,c,r)
 f2d = sp.Function('f2d')(l,b,c,r,t)
+f2df = sp.Function('f2d')(l,b,lb,c,r,t,rt,lt,rb)
 
 stexpr = StencilExpression(outvar, [invar], [i], [[[-1],[0],[1]]],f)
 loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
@@ -194,6 +198,11 @@ print(loop2d)
 for l in (loop2d.diff(invar_b, outvar_b)):
   print(l)
 
+stexpr2df = StencilExpression(outvar, [invar], [i,j], [[[-1,0],[0,-1],[-1,-1],[0,0],[1,0],[0,1],[1,1],[-1,1],[1,-1]]],f2df)
+loop2df = LoopNest(body=stexpr2df, bounds={i:[2,n-1],j:[2,n-1]})
+print(loop2df)
+for l in (loop2df.diff(invar_b, outvar_b)):
+  print(l)
 #for l,e in (stexpr2d.diff(invar_b, outvar_b)):
 #  print(l)
 #  print(e)
