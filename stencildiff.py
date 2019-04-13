@@ -28,27 +28,35 @@ class LoopNest:
     # This loop goes over all dimensions. In each dimension, nestlist is replaced
     # with a new nestlist that has been split in that dimension.
     for counter in self.counters:
+      print("counter %s"%counter)
+      newnestlist = []
       # This loop goes over all nests. Each nest may get split into several new
       # nests, which are appended to newnestlist.
       for nest,nestbound in nestlist:
-        newnestlist = []
+        print("  nest %s"%str(nestbound))
         nest.sort(key=lambda x: x[0][counter])
-        for i in range(len(nest)-1):
-          # Get a statement and its offset dict
-          offsets_0,stmt_0 = nest[i]
-          offsets_1,stmt_1 = nest[i+1]
-          # Get only the offset for the current loop dimension
-          offs_0 = offsets_0[counter]
-          offs_1 = offsets_1[counter]
+        print("  -with offs %s"%list(map(lambda x: x[0],nest)))
+        # Multiple offsets may hav the same offset in the current dimension. We need to find
+        # the positions in the array where the offset in this dimension changes.
+        offsets = list(map(lambda x: x[0][counter],nest))
+        uniqueoffsets = list(set(offsets))
+        uniqueoffsets.sort()
+        chunklimits = [offsets.index(i) for i in uniqueoffsets]
+        for i in range(len(chunklimits)-1):
+          # Get the range of offsets that this loop nest will contain
+          offs_0 = offsets[chunklimits[i]]
+          offs_1 = offsets[chunklimits[i+1]]
           # Get all statements that need to be part of the body of this prequel loop
-          stmts_pre  = nest[slice(0,i+1)]
+          stmts_pre  = nest[slice(0,chunklimits[i+1])]
           # Get all statements that need to be part of the body of this sequel loop
-          stmts_post = nest[slice(i+1,len(nest))]
+          stmts_post = nest[slice(chunklimits[i+1],len(nest))]
           # Compute the new loop bounds after applying offsets
           bounds_pre = nestbound.copy()
           bounds_post = nestbound.copy()
-          bounds_pre[counter] = nestbound[counter][0]+offs_0,nestbound[counter][0]+offs_1-1
-          bounds_post[counter] = nestbound[counter][1]+offs_0+1,nestbound[counter][1]+offs_1-1
+          bounds_pre[counter] = nestbound[counter][0]+offs_1-1,nestbound[counter][0]+offs_0
+          bounds_post[counter] = nestbound[counter][1]+offs_1,nestbound[counter][1]+offs_0+1
+          print("    pre %s"%bounds_pre)
+          print("    post %s"%bounds_post)
           # Append the nest to the new list of nests
           newnestlist.append((stmts_pre,bounds_pre))
           newnestlist.append((stmts_post,bounds_post))
@@ -56,6 +64,7 @@ class LoopNest:
         stmts_core = nest
         bounds_core = nestbound.copy()
         bounds_core[counter] = nestbound[counter][0]+nest[-1][0][counter],nestbound[counter][1]+nest[0][0][counter]
+        print("    core %s"%bounds_core)
         newnestlist.append((stmts_core,bounds_core))
       # Replace the old nest list with the refined one, ready for the next iteration
       nestlist = newnestlist
@@ -182,8 +191,8 @@ for l in (loop1d.diff(invar_b, outvar_b)):
 stexpr2d = StencilExpression(outvar, [invar,jnvar], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
 loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
 print(loop2d)
-#for l in (loop2d.diff(invar_b, outvar_b)):
-#  print(l)
+for l in (loop2d.diff(invar_b, outvar_b)):
+  print(l)
 
 #for l,e in (stexpr2d.diff(invar_b, outvar_b)):
 #  print(l)
