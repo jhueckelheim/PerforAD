@@ -18,8 +18,8 @@ class LoopNest:
   def __str__(self):
     return str(self.loop)
 
-  def diff(self, invar_b, outvar_b):
-    body_b = self.body.diff(invar_b, outvar_b)
+  def diff(self, diffvars):
+    body_b = self.body.diff(diffvars)
     # A nest is a tuple that contains
     #  - a list containing (offset, statement) tuples
     #  - a dict with {counter: loop bounds}
@@ -179,7 +179,7 @@ class StencilExpression:
       lhs = "%s[%s]"%(self.outvar,lhsargs)
     return "%s += %s"%(lhs,self.func.at(args))
 
-  def diff(self,invar_b,outvar_b):
+  def diff(self,diffvars):
     # All invars and offsets given to the StencilExpression are
     # zipped so that each offset has the correct invar, like so:
     # [(invar, [(i, -1)]), (invar, [(i, 0)]), (invar, [(i, 1)])]
@@ -193,59 +193,75 @@ class StencilExpression:
     exprs = []
     # zip the list of function arguments and input variables
     for arg,inp in list(zip(self.func.args,inputs)):
-      # Differentiate the function wrt. the current input
-      func_d = self.func.diff(arg)
-      # inpvar is the name of the current input variable.
-      # inpidx is a tuple of counter variable (e.g. i) and offset (e.g. -1)
-      inpvar, inpidx = inp
-      # The output index of the diff'ed expression will be the same as that of
-      # the primal expression (that's the whole point of this transformation)
-      outidx = self.idx_out
-      # We shift all other indices by the offset in inpidx to make this correct
-      shifted_idx_in = []
-      for (var,offsets) in list(zip(self.invar,self.offset_in)):
-        idxlist = []
-        for ofs in offsets:
-          idxlist.append(list(map(lambda x: (x[1]-x[2][1]),zip(self.idx_out,ofs,inpidx))))
-        shifted_idx_in.append(idxlist)
-      shifted_idx_in.append([list(map(lambda x: (-x[1]),inpidx))])
-      expr_d = StencilExpression(outvar = invar_b, invar = self.invar+[outvar_b], idx_out = outidx, offset_in = shifted_idx_in, func = func_d)
-      exprs.append((dict(inpidx),expr_d))
+      if(inp[0] in diffvars):
+        # Differentiate the function wrt. the current input
+        func_d = self.func.diff(arg)
+        # inpvar is the name of the current input variable.
+        # inpidx is a tuple of counter variable (e.g. i) and offset (e.g. -1)
+        inpvar, inpidx = inp
+        # The output index of the diff'ed expression will be the same as that of
+        # the primal expression (that's the whole point of this transformation)
+        outidx = self.idx_out
+        # We shift all other indices by the offset in inpidx to make this correct
+        shifted_idx_in = []
+        for (var,offsets) in list(zip(self.invar,self.offset_in)):
+          idxlist = []
+          for ofs in offsets:
+            idxlist.append(list(map(lambda x: (x[1]-x[2][1]),zip(self.idx_out,ofs,inpidx))))
+          shifted_idx_in.append(idxlist)
+        shifted_idx_in.append([list(map(lambda x: (-x[1]),inpidx))])
+        expr_d = StencilExpression(outvar = diffvars[inp[0]], invar = self.invar+[diffvars[self.outvar]], idx_out = outidx, offset_in = shifted_idx_in, func = func_d)
+        exprs.append((dict(inpidx),expr_d))
     return exprs
       
 
-i, j, n, l, c, r, t, b, lb, rt, lt, rb = sp.symbols('i, j, n, l, c, r, t, b, lb, rt, lt, rb')
-outvar = sp.Function('outvar')
-invar = sp.Function('invar')
-jnvar = sp.Function('jnvar')
-outvar_b = sp.Function('outvar_b')
-invar_b = sp.Function('invar_b')
+i, j, n, l, c, r, t, b, lb, rt, lt, rb, a = sp.symbols('i, j, n, l, c, r, t, b, lb, rt, lt, rb, a')
+outv = sp.Function('outv')
+inv = sp.Function('inv')
+vel = sp.Function('vel')
+outv_b = sp.Function('outv_b')
+inv_b = sp.Function('inv_b')
+vel_b = sp.Function('vel_b')
 
 f = SympyFuncStencil("f",[l,c,r])
-stexpr = StencilExpression(outvar, [invar], [i], [[[-1],[0],[1]]],f)
+stexpr = StencilExpression(outv, [inv], [i], [[[-1],[0],[1]]],f)
 loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
 print(loop1d)
-for lp in (loop1d.diff(invar_b, outvar_b)):
+for lp in (loop1d.diff({inv:inv_b, outv:outv_b})):
   print(lp)
 
-f2d = SympyFuncStencil("f",[l,b,c,r,t])
-stexpr2d = StencilExpression(outvar, [invar,jnvar], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
-loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
-print(loop2d)
-for lp in (loop2d.diff(invar_b, outvar_b)):
-  print(lp)
-
-f = SympyExprStencil(l+r-2*c,[l,c,r])
-stexpr = StencilExpression(outvar, [invar], [i], [[[-1],[0],[1]]],f)
+f = SympyExprStencil(l+r-2*c*a,[l,c,r,a])
+stexpr = StencilExpression(outv, [inv,vel], [i], [[[-1],[0],[1]],[[0]]],f)
 loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
 print(loop1d)
-for lp in (loop1d.diff(invar_b, outvar_b)):
+for lp in (loop1d.diff({inv:inv_b, outv:outv_b})):
   print(lp)
 
-f2d = SympyExprStencil(l+b+r+t-4*c,[l,b,c,r,t])
-stexpr2d = StencilExpression(outvar, [invar,jnvar], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
-loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
-print(loop2d)
-for lp in (loop2d.diff(invar_b, outvar_b)):
+f = SympyExprStencil(l+r-2*c*a,[l,c,r,a])
+stexpr = StencilExpression(outv, [inv,vel], [i], [[[-1],[0],[1]],[[0]]],f)
+loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
+print(loop1d)
+for lp in (loop1d.diff({inv:inv_b, outv:outv_b, vel:vel_b})):
   print(lp)
+
+#f2d = SympyFuncStencil("f",[l,b,c,r,t,a])
+#stexpr2d = StencilExpression(outv, [inv,vel], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
+#loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
+#print(loop2d)
+#for lp in (loop2d.diff(invar_b, outv_b)):
+#  print(lp)
+#
+#f = SympyExprStencil(l+r-2*c,[l,c,r])
+#stexpr = StencilExpression(outv, [inv], [i], [[[-1],[0],[1]]],f)
+#loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
+#print(loop1d)
+#for lp in (loop1d.diff(invar_b, outv_b)):
+#  print(lp)
+#
+#f2d = SympyExprStencil(l+b+r+t-4*c*a,[l,b,c,r,t,a])
+#stexpr2d = StencilExpression(outv, [inv,vel], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
+#loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
+#print(loop2d)
+#for lp in (loop2d.diff(invar_b, outv_b)):
+#  print(lp)
 
