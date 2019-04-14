@@ -251,7 +251,7 @@ print(loop2d)
 for lp in (loop2d.diff({inv:inv_b, outv:outv_b})):
   print(lp)
 
-f = SympyExprStencil(l+r-2*c,[l,c,r])
+f = SympyExprStencil(sp.Piecewise((c-l, l > r), (r-c, True)),[l,c,r])
 stexpr = StencilExpression(outv, [inv], [i], [[[-1],[0],[1]]],f)
 loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
 print(loop1d)
