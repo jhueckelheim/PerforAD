@@ -237,31 +237,31 @@ print(loop1d)
 for lp in (loop1d.diff({inv:inv_b, outv:outv_b})):
   print(lp)
 
-f = SympyExprStencil(l+r-2*c*a,[l,c,r,a])
+f = SympyExprStencil((l+r-2*c)*a,[l,c,r,a])
 stexpr = StencilExpression(outv, [inv,vel], [i], [[[-1],[0],[1]],[[0]]],f)
 loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
 print(loop1d)
 for lp in (loop1d.diff({inv:inv_b, outv:outv_b, vel:vel_b})):
   print(lp)
 
-#f2d = SympyFuncStencil("f",[l,b,c,r,t,a])
-#stexpr2d = StencilExpression(outv, [inv,vel], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
-#loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
-#print(loop2d)
-#for lp in (loop2d.diff(invar_b, outv_b)):
-#  print(lp)
-#
-#f = SympyExprStencil(l+r-2*c,[l,c,r])
-#stexpr = StencilExpression(outv, [inv], [i], [[[-1],[0],[1]]],f)
-#loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
-#print(loop1d)
-#for lp in (loop1d.diff(invar_b, outv_b)):
-#  print(lp)
-#
-#f2d = SympyExprStencil(l+b+r+t-4*c*a,[l,b,c,r,t,a])
-#stexpr2d = StencilExpression(outv, [inv,vel], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
-#loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
-#print(loop2d)
-#for lp in (loop2d.diff(invar_b, outv_b)):
-#  print(lp)
+f2d = SympyFuncStencil("f",[l,b,c,r,t,a])
+stexpr2d = StencilExpression(outv, [inv,vel], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
+loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
+print(loop2d)
+for lp in (loop2d.diff({inv:inv_b, outv:outv_b})):
+  print(lp)
+
+f = SympyExprStencil(l+r-2*c,[l,c,r])
+stexpr = StencilExpression(outv, [inv], [i], [[[-1],[0],[1]]],f)
+loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
+print(loop1d)
+for lp in (loop1d.diff({inv:inv_b, outv:outv_b})):
+  print(lp)
+
+f2d = SympyExprStencil(l+b+r+t-4*c*a,[l,b,c,r,t,a])
+stexpr2d = StencilExpression(outv, [inv,vel], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
+loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
+print(loop2d)
+for lp in (loop2d.diff({inv:inv_b, outv:outv_b})):
+  print(lp)
 
