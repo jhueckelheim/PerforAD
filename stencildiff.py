@@ -69,7 +69,6 @@ class LoopNest:
         print("    core %s"%bounds_core)
         newnestlist.append((stmts_core,bounds_core))
       # Replace the old nest list with the refined one, ready for the next iteration
-      print(newnestlist)
       nestlist = newnestlist
     # Finally, take all nests and turn them into actual LoopNest objects.
     loops = []
@@ -135,7 +134,7 @@ class SympyFuncStencil:
     return SympyFuncStencil(diffname,diffargs)
 
 class SympyExprStencil:
-  def __init__(self, expr, args, inputs = None):
+  def __init__(self, expr, args):
     self.expr = expr
     self.args = args
 
@@ -143,13 +142,15 @@ class SympyExprStencil:
     return self.expr
 
   def at(self,inputs):
-    return self.expr.subs(inputs)
+    subs = dict(zip(self.args,inputs))
+    return self.expr.subs(subs)
 
   def args(self):
     return self.args
 
   def diff(self,wrt):
-    return SympyExprStencil(self.expr.diff(wrt),self.args)
+    wrtb = sp.Symbol('wrtb')
+    return SympyExprStencil(self.expr.diff(wrt)*wrtb,self.args+[wrtb])
 
 # TODO separate presentation/API from logic.
 # StencilExpression should only deal with whatever is necessary for the logic,
@@ -176,7 +177,7 @@ class StencilExpression:
         args.append(var(*idxlist))
       lhsargs = ",".join(map(lambda x: str(x),self.idx_out))
       lhs = "%s[%s]"%(self.outvar,lhsargs)
-    return "%s = %s"%(lhs,self.func.at(args))
+    return "%s += %s"%(lhs,self.func.at(args))
 
   def diff(self,invar_b,outvar_b):
     # All invars and offsets given to the StencilExpression are
@@ -220,32 +221,31 @@ jnvar = sp.Function('jnvar')
 outvar_b = sp.Function('outvar_b')
 invar_b = sp.Function('invar_b')
 
-#f = SympyFuncStencil("f",[l,c,r])
-#stexpr = StencilExpression(outvar, [invar], [i], [[[-1],[0],[1]]],f)
-#loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
-#print(loop1d)
-#for lp in (loop1d.diff(invar_b, outvar_b)):
-#  print(lp)
-#
-#f2d = SympyFuncStencil("f",[l,b,c,r,t])
-#stexpr2d = StencilExpression(outvar, [invar,jnvar], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
-#loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
-#print(loop2d)
-#for lp in (loop2d.diff(invar_b, outvar_b)):
-#  print(lp)
-
-f = SympyExprStencil("f",[l,c,r])
+f = SympyFuncStencil("f",[l,c,r])
 stexpr = StencilExpression(outvar, [invar], [i], [[[-1],[0],[1]]],f)
 loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
 print(loop1d)
 for lp in (loop1d.diff(invar_b, outvar_b)):
   print(lp)
 
-#f2d = sp.Function('f2d')(l,b,c,r,t)
-#f2df = sp.Function('f2d')(l,b,lb,c,r,t,rt,lt,rb)
-#
-#stexpr2df = StencilExpression(outvar, [invar], [i,j], [[[-1,0],[0,-1],[-1,-1],[0,0],[1,0],[0,1],[1,1],[-1,1],[1,-1]]],f2df)
-#loop2df = LoopNest(body=stexpr2df, bounds={i:[2,n-1],j:[2,n-1]})
-#print(loop2df)
-#for l in (loop2df.diff(invar_b, outvar_b)):
-#  print(l)
+f2d = SympyFuncStencil("f",[l,b,c,r,t])
+stexpr2d = StencilExpression(outvar, [invar,jnvar], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
+loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
+print(loop2d)
+for lp in (loop2d.diff(invar_b, outvar_b)):
+  print(lp)
+
+f = SympyExprStencil(l+r-2*c,[l,c,r])
+stexpr = StencilExpression(outvar, [invar], [i], [[[-1],[0],[1]]],f)
+loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
+print(loop1d)
+for lp in (loop1d.diff(invar_b, outvar_b)):
+  print(lp)
+
+f2d = SympyExprStencil(l+b+r+t-4*c,[l,b,c,r,t])
+stexpr2d = StencilExpression(outvar, [invar,jnvar], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
+loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
+print(loop2d)
+for lp in (loop2d.diff(invar_b, outvar_b)):
+  print(lp)
+
