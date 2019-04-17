@@ -11,12 +11,12 @@
         extern "C" {
 #   endif
 
- #define max_double_tape_size  10000000
- #define max_integer_tape_size 10000000
+ #define max_double_tape_size  10000
+ #define max_integer_tape_size 10000
  #define max_logical_tape_size 10000
- #define max_character_tape_size 1000000
+ #define max_character_tape_size 1000
  #define max_stringlength_tape_size 1000
- #define max_address_tape_size 10000000
+ #define max_address_tape_size 10000
 
   void __ADIC_TapeInit();
   void __ADIC_Dump();
