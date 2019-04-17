@@ -6,7 +6,13 @@ all: driver
 
 head.c: adic_output_generator/head.c
 	cp $< $@
-CFLAGS+= -DN=$(N)
+
+ifeq ($(N),)
+N := 10
+endif
+
+#CFLAGS+= -DN=$(N) -DDEBUG=1
+CFLAGS+= -DN=$(N) 
 RUNTIMEDIR = ./runtime_dense_reverse/
 SRC_DRIVER = driver.c head.c			
 OBJ_DRIVER = $(subst .c,.lo,$(SRC_DRIVER))
