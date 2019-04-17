@@ -259,44 +259,10 @@ def printcpp(varnames):
 #print(loop1d)
 #for lp in (loop1d.diff({inv:inv_b, outv:outv_b})):
 #  print(lp)
-#
-#f = SympyExprStencil(l+r-2*c*a,[l,c,r,a])
-#stexpr = StencilExpression(outv, [inv,vel], [i], [[[-1],[0],[1]],[[0]]],f)
-#loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
-#print(loop1d)
-#for lp in (loop1d.diff({inv:inv_b, outv:outv_b})):
-#  print(lp)
 
-#f = SympyExprStencil((l+r-2*c)*a,[l,c,r,a])
-#stexpr = StencilExpression(outv, [inv,vel], [i], [[[-1],[0],[1]],[[0]]],f)
-#loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
-#print(loop1d)
-#for lp in (loop1d.diff({inv:inv_b, outv:outv_b, vel:vel_b})):
-#  print(lp)
-#for lp in (loop1d.diff({inv:inv_b, outv:outv_b})):
-
-#f2d = SympyFuncStencil("f",[l,b,c,r,t,a])
-#stexpr2d = StencilExpression(outv, [inv,vel], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
-#loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
-#print(loop2d)
-#for lp in (loop2d.diff({inv:inv_b, outv:outv_b})):
-#  print(lp)
-#
-#f = SympyExprStencil(sp.Piecewise((c-l, l > r), (r-c, True)),[l,c,r])
-#stexpr = StencilExpression(outv, [inv], [i], [[[-1],[0],[1]]],f)
-#loop1d = LoopNest(body=stexpr, bounds={i:[2,n-1]})
-#print(loop1d)
-#for lp in (loop1d.diff({inv:inv_b, outv:outv_b})):
-#  print(lp)
-#
-#f2d = SympyExprStencil((l+b+r+t-4*c)*a,[l,b,c,r,t,a])
-#stexpr2d = StencilExpression(outv, [inv,vel], [i,j], [[[-1,0],[0,-1],[0,0],[1,0],[0,1]],[[0,0]]],f2d)
-#loop2d = LoopNest(body=stexpr2d, bounds={i:[2,n-1],j:[2,n-1]})
-#print(loop2d)
-#for lp in (loop2d.diff({inv:inv_b, outv:outv_b})):
-#  print(lp)
-
-# 3D Wave Equation example used in ICPP paper
+# 3D Wave Equation example
+# Cx = (c_c*dt/dx)**2
+# Cy = (c_c*dt/dy)**2
 c = sp.Function("c")
 u_1 = sp.Function("u_1")
 u_2 = sp.Function("u_2")
@@ -307,9 +273,6 @@ u_b = sp.Function("u_b")
 u_1_c, u_1_w, u_1_e, u_1_n, u_1_s, u_1_t, u_1_b, u_2_c, c_c = sp.symbols("u_1_c, u_1_w, u_1_e, u_1_n, u_1_s, u_1_t, u_1_b, u_2_c, c_c")
 i,j,k = sp.symbols("i,j,k")
 D, n = sp.symbols("D, n")
-#dt, dx, dy, n = sp.symbols("dt, dx, dy, n")
-#Cx = (c_c*dt/dx)**2
-#Cy = (c_c*dt/dy)**2
 u_xx = u_1_w - 2*u_1_c + u_1_e
 u_yy = u_1_s - 2*u_1_c + u_1_n
 u_zz = u_1_t - 2*u_1_c + u_1_b
@@ -322,9 +285,7 @@ print(loop2d)
 for lp in (loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b})):
   print(lp)
 
-# 1D Burgers Equation example used in ICPP paper
-
-#unew[i] = u[i] - dt/dx * u[i] * (u[i]-u[i-1]) + nu * dt / (dx*dx) * (u[i+1]+u[i-1]-2*u[i])
+# 1D Burgers Equation example
 # C = dt/dx
 # D = nu * dt / (dx*dx)
 u_1_c, u_1_l, u_1_r, C = sp.symbols("u_1_l, u_1_c, u_1_r, C")
@@ -342,7 +303,7 @@ print(loop1d)
 for lp in (loop1d.diff({u:u_b, u_1:u_1_b})):
   print(lp)
 
-# 1D Wave Equation example used in ICPP paper
+# 1D Wave Equation example
 c = sp.Function("c")
 u_1 = sp.Function("u_1")
 u_2 = sp.Function("u_2")
@@ -361,7 +322,7 @@ expr = 2.0*u_1_c - u_2_c + c_c*D*(u_xx)
 f2d = SympyExprStencil(expr,[u_1_c, u_1_w, u_1_e, u_2_c, u_1_t])
 stexpr2d = StencilExpression(u, [u_1,u_2,c], [i], [[[0],[-1],[1]],[[0]],[[0]]],f2d)
 loop2d = LoopNest(body=stexpr2d, bounds={i:[1,n-2]})
-printcpp([(u,1),(u_1,1),(u_2,1),(c,1)])
+printcpp([(u,1),(u_1,1),(u_2,1),(c,1),(u_b,1),(u_1_b,1),(u_2_b,1),(c,1)])
 print(loop2d)
 for lp in (loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b})):
   print(lp)
