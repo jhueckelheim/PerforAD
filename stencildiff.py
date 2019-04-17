@@ -10,14 +10,73 @@ class LoopNest:
     self.body = body
     self.counters = list(bounds.keys())
     self.bounds = bounds
-    for counter in self.counters:
-      start = bounds[counter][0]
-      end = bounds[counter][1]
-      body = _Loop_(body,counter,start,end)
-    self.loop = body
+
+  #def __str__(self):
+  #  return self.loop.code(outermost=True)
+  #  omp = "#pragma omp parallel for private(%s)"%(", ".join(map(str,self.counters)))
+  #  return str("%s\n%s"%(omp,self.loop))
 
   def __str__(self):
-    return str(self.loop)
+    body = ""
+    try:
+      # Try to join the list of statements in the loop body together.
+      # If this fails, there is only one statement (no list).
+      outlist = []
+      for stmt in self.body:
+        outlist.append(str(stmt))
+      body = "\n".join(outlist)
+    except TypeError:
+      body = str(self.body)
+    rcounters = self.counters.copy()
+    rcounters.reverse()
+    loops = {}
+    outermost = None         # keep track which is the outermost loop so we can place an OpenMP pragma in front
+    counters_within = []     # keep track of counters that are set within the OpenMP parallel loop, which need to be privatised.
+    for counter in rcounters:
+      # this builds the loop nest from the innermost to the outermost loop
+      counters_within.append(counter)
+      start = self.bounds[counter][0]
+      end = self.bounds[counter][1]
+      try:
+        # Try and remove loop nests where any dimension has 0 iterations.
+        if(end-start<0):
+          return ""
+      except TypeError:
+        # If start or end contain sympy.Symbols, the relation can not be known
+        # and this throws an error. We ignore this and assume that the loop may
+        # have more than 0 iterations (it does not matter if this turns out to
+        # be false at runtime, just adds dead code).
+        pass
+      try:
+        # Try and simplify loops with only one iteration (print the loop
+        # body, and assign the correct value to the counter variable).
+        if(end-start==0):
+          loops[counter] = False
+          continue
+      except TypeError:
+        # If that failed, perhaps the loop bounds are again symbolic. Print the
+        # loop, everything will be fine at runtime.
+        pass
+      loops[counter] = True
+      # whenever we find another nontrivial loop (more than one iteration),
+      # save it as the current outermost loop. By the end of this process,
+      # this variable will contain the actual outermost loop, and whatever
+      # counters we had found within that loop.
+      outermost = (counter,counters_within.copy())
+      continue
+    for counter in rcounters:
+      is_a_loop = loops[counter]
+      # nontrivial loops get a for(...){...} construct.
+      if(is_a_loop):
+        # the outermost nontrivial loop also gets an OpenMP pragma
+        omp = ""
+        if(outermost[0] == counter):
+          omp = "#pragma omp for private(%s)\n"%",".join(map(str,outermost[1]))
+        body = "%sfor ( %s=%s; %s<=%s; %s++ ) {\n%s\n}"%(omp,counter,start,counter,end,counter,textwrap.indent(str(body),4*" "))
+      # trivial loops (those with exactly one iteration) just get a statement.
+      else:
+        body = "%s=%s;\n%s"%(counter,start,body)
+    return body
 
   def diff(self, diffvars):
     body_b = self.body.diff(diffvars)
@@ -78,44 +137,6 @@ class LoopNest:
       verboseprint(nestbound)
       loops.append(LoopNest(statements,nestbound))
     return loops
-
-class _Loop_:
-  def __init__(self,body,counter,start,end):
-    self.counter = counter
-    self.start   = start
-    self.end     = end
-    self.body    = body
-
-  def __str__(self):
-    try:
-      # Try and remove loops with 0 iterations.
-      if(self.end-self.start<0):
-        return ""
-    except TypeError:
-      # If start or end contain sympy.Symbols, the relation can not be known
-      # and this throws an error. We ignore this and assume that the loop may
-      # have more than 0 iterations (it does not matter if this turns out to
-      # be false at runtime, just adds dead code).
-      pass
-    try:
-      # Try to join the list of statements in the loop body together.
-      # If this fails, there is only one statement (no list).
-      outlist = []
-      for stmt in self.body:
-        outlist.append(str(stmt))
-      res = "\n".join(outlist)
-    except TypeError:
-      res = str(self.body)
-    try:
-      # Try and simplify loops with only one iteration (print the loop
-      # body, and assign the correct value to the counter variable).
-      if(self.end-self.start==0):
-        return "%s=%s;\n%s"%(self.counter,self.start,res)
-    except TypeError:
-      # If that failed, perhaps the loop bounds are again symbolic. Print the
-      # loop, everything will be fine at runtime.
-      pass
-    return "for ( %s=%s; %s<=%s; %s++ ) {\n%s\n}"%(self.counter,self.start,self.counter,self.end,self.counter,textwrap.indent(str(res),4*" "))
 
 class SympyFuncStencil:
   def __init__(self, name, args):
