@@ -2,7 +2,6 @@ CC=gcc
 # CFLAGS=  -DCHECK_ERROR -I..
 CFLAGS=  -g -O
 
-N=10
 all: driver
 
 head.c: adic_output_generator/head.c
