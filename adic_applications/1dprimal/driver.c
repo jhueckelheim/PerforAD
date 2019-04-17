@@ -42,8 +42,6 @@ int main()
     dd_inv[i] = 0.0;
     for (j = 0; j < N; j++) {
       dd_inv[i] += (outvph[j] - outv[j])/h;
-      //printf("DD result is: \t\t[%f]\t", dd_res[i]);
-      //printf("error {%1.2e}\n", an_res[i]-dd_res[i]);
     }
     invph[i] = inv[i];
   } 
@@ -88,27 +86,35 @@ int main()
   our_rev_mode.adjoint = 0; 
   ad_head(ad_outv,ad_inv, ad_vel,N);
 #ifdef DEBUG
+  printf("Primal Output\n");
+  printf("i\tOrig\tADIC\n");
   for (i = 0; i < N; i++){
-    printf("ad_outv[%d] %lf %lf \n", i, outv[i], DERIV_val(ad_outv[i]));
+    printf("%d\t%lf\t%lf \n", i, outv[i], DERIV_val(ad_outv[i]));
    } 
 #endif
   our_rev_mode.tape = 0; 
   our_rev_mode.adjoint = 1; 
   ad_head(ad_outv,ad_inv,ad_vel,N);
+
 #ifdef DEBUG
+  printf("Adjoint Output inv \n");
+  printf("i\tADIC\tPerforAD\tFD\n");
   double temp_adj;
   for (i = 0; i <N; i++) {  
     temp_adj = 0.0; 
     for (j = 0; j <ADIC_GRADVEC_LENGTH; j++) {
       temp_adj +=  DERIV_grad(ad_inv[i])[j];
     }
-    printf("AD result is: \t\t[%lf] %lf %lf \n", temp_adj, inv_b[i], dd_inv[i]);  
+    printf("%d %lf\t%lf\t%lf \n", i,temp_adj, inv_b[i], dd_inv[i]); 
+  } 
+  printf("Adjoint Output vel \n");
+  printf("i\tADIC\tPerforAD\n");
+  for (i = 0; i <N; i++) {  
     temp_adj = 0.0; 
     for (j = 0; j <ADIC_GRADVEC_LENGTH; j++) {
       temp_adj +=  DERIV_grad(ad_vel[i])[j];
     }
-    printf("AD result is: \t\t[%lf] %lf \n", temp_adj, vel_b[i]);  
-    //printf("error {%lf}\n", an_res[i]- temp_adj);  
+    printf("%d %lf\t%lf \n", i, temp_adj, vel_b[i]); 
   }
 #endif  
   ADIC_Finalize();
