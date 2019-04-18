@@ -6,10 +6,13 @@ verbose = False
 verboseprint = print if verbose else lambda *a, **k: None
 
 class LoopNest:
-  def __init__(self,body,bounds):
+  def __init__(self,body,bounds,counters,arrays,scalars,ints):
     self.body = body
-    self.counters = list(bounds.keys())
     self.bounds = bounds
+    self.counters = counters
+    self.arrays = arrays
+    self.scalars = scalars
+    self.ints = ints
 
   def __str__(self):
     body = ""
@@ -128,10 +131,15 @@ class LoopNest:
       nestlist = newnestlist
     # Finally, take all nests and turn them into actual LoopNest objects.
     loops = []
+    arrays = []
+    for v in self.arrays:
+      arrays.append(v)
+      if(v in diffvars):
+        arrays.append(diffvars[v])
     for body_b,nestbound in nestlist:
       statements = map(itemgetter(1),body_b)
       verboseprint(nestbound)
-      loops.append(LoopNest(statements,nestbound))
+      loops.append(LoopNest(statements,nestbound,self.counters,arrays,self.scalars,self.ints))
     return loops
 
 class SympyFuncStencil:
@@ -241,7 +249,11 @@ outv_b = sp.Function('outv_b')
 inv_b = sp.Function('inv_b')
 vel_b = sp.Function('vel_b')
 
-def printfunction(name, loopnestlist, counters, arrays, scalars, ints):
+def printfunction(name, loopnestlist):
+  counters = loopnestlist[0].counters
+  arrays = loopnestlist[0].arrays
+  scalars = loopnestlist[0].scalars
+  ints = loopnestlist[0].ints
   funcdefs = """
 #ifndef TAPENADE
 #include <math.h>
@@ -275,63 +287,85 @@ def printfunction(name, loopnestlist, counters, arrays, scalars, ints):
 #for lp in (loop1d.diff({inv:inv_b, outv:outv_b})):
 #  print(lp)
 
-# 3D Wave Equation example
-# Cx = (c_c*dt/dx)**2
-# Cy = (c_c*dt/dy)**2
-c = sp.Function("c")
-u_1 = sp.Function("u_1")
-u_2 = sp.Function("u_2")
-u = sp.Function("u")
-u_1_b = sp.Function("u_1_b")
-u_2_b = sp.Function("u_2_b")
-u_b = sp.Function("u_b")
-u_1_c, u_1_w, u_1_e, u_1_n, u_1_s, u_1_t, u_1_b, u_2_c, c_c = sp.symbols("u_1_c, u_1_w, u_1_e, u_1_n, u_1_s, u_1_t, u_1_b, u_2_c, c_c")
-i,j,k = sp.symbols("i,j,k")
-D, n = sp.symbols("D, n")
-u_xx = u_1_w - 2*u_1_c + u_1_e
-u_yy = u_1_s - 2*u_1_c + u_1_n
-u_zz = u_1_t - 2*u_1_c + u_1_b
-expr = 2.0*u_1_c - u_2_c + c_c*D*(u_xx + u_yy + u_zz)
-f2d = SympyExprStencil(expr,[u_1_c, u_1_w, u_1_e, u_1_n, u_1_s, u_1_t, u_1_b, u_2_c, c_c])
-stexpr2d = StencilExpression(u, [u_1,u_2,c], [i,j,k], [[[0,0,0],[-1,0,0],[1,0,0],[0,-1,0],[0,1,0],[0,0,1],[0,0,-1]],[[0,0,0]],[[0,0,0]]],f2d)
-loop2d = LoopNest(body=stexpr2d, bounds={i:[1,n-2],j:[1,n-2],k:[1,n-2]})
-printfunction(name="wave3d", loopnestlist=[loop2d], counters=[i,j,k], arrays=[u,u_1,u_2,c], scalars=[D], ints=[n])
-printfunction(name="wave3d_perf_b", loopnestlist=loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b}), counters=[i,j,k], arrays=[u,u_1,u_2,c,u_b,u_1_b,u_2_b], scalars=[D], ints=[n])
+def makeLoopNest(lhs, rhs, counters, bounds):
+  functions = list(rhs.atoms(sp.Function))
+  functions.sort(key=lambda x: x.func)
+  scalars = [s for s in rhs.atoms(sp.Symbol) if s not in counters]
+  ints = []
+  for b in bounds:
+    try:
+      ints = ints + list(bounds[b][0].atoms(sp.Symbol))
+    except AttributeError:
+      pass
+    try:
+      ints = ints + list(bounds[b][1].atoms(sp.Symbol))
+    except AttributeError:
+      pass
+  ints = list(set(ints))
+  funcNames = []
+  offsets = []
+  funcID = 0
+  subs = []
+  for func in functions:
+    funcName = func.func
+    if not (funcName in funcNames):
+      funcNames.append(funcName)
+      offsets.append([])
+    funcArgs = list(map(lambda x: x[0]-x[1], zip(func.args, counters)))
+    offsets[-1].append(funcArgs)
+    subs.append([func, "perforad_arg_%d"%funcID])
+    funcID = funcID + 1
+  # TODO check that offsets are const
+  # TODO check that lhs args are in correct order
+  exprvars = list(map(itemgetter(1),subs))
+  f2d = SympyExprStencil(rhs.subs(subs),exprvars)
+  stexpr = StencilExpression(lhs.func, funcNames, counters, offsets, f2d)
+  loop = LoopNest(body=stexpr, bounds = bounds, counters = counters, arrays = [lhs.func]+funcNames, scalars = scalars, ints = ints)
+  return loop
 
-# 1D Burgers Equation example
-# C = dt/dx
-# D = nu * dt / (dx*dx)
-u_1_c, u_1_l, u_1_r, C = sp.symbols("u_1_l, u_1_c, u_1_r, C")
-ap = sp.functions.Max(u_1_c,0)
-am = sp.functions.Min(u_1_c,0)
-uxm = u_1_c-u_1_l
-uxp = u_1_r-u_1_c
+
+# Define symbols for all examples
+c = sp.Function("c")
+u_1 = sp.Function("u_1"); u_1_b = sp.Function("u_1_b")
+u_2 = sp.Function("u_2"); u_2_b = sp.Function("u_2_b")
+u = sp.Function("u")    ; u_b = sp.Function("u_b")
+i,j,k,C,D,n = sp.symbols("i,j,k,C,D,n")
+
+
+######## 1D Wave Equation Example ########
+# Build stencil expression
+u_xx = u_1(i-1) - 2*u_1(i) + u_1(i+1)
+expr = 2.0*u_1(i) - u_2(i) + c(i)*D*u_xx
+# Build LoopNest object for this expression
+lp = makeLoopNest(lhs=u(i), rhs=expr, counters = [i], bounds={i:[1,n-2]})
+# Output primal and adjoint files
+printfunction(name="wave1d", loopnestlist=[lp])
+printfunction(name="wave1d_perf_b", loopnestlist=lp.diff({u:u_b, u_1:u_1_b, u_2: u_2_b}))
+
+
+######## 3D Wave Equation Example ########
+# Build stencil expression
+u_xx = u_1(i-1,j,k) - 2*u_1(i,j,k) + u_1(i+1,j,k)
+u_yy = u_1(i,j-1,k) - 2*u_1(i,j,k) + u_1(i,j+1,k)
+u_zz = u_1(i,j,k-1) - 2*u_1(i,j,k) + u_1(i,j,k+1)
+expr = 2.0*u_1(i,j,k) - u_2(i,j,k) + c(i,j,k)*D*(u_xx + u_yy + u_zz)
+# Build LoopNest object for this expression
+lp = makeLoopNest(lhs=u(i,j,k), rhs=expr, counters = [i,j,k], bounds={i:[1,n-2],j:[1,n-2],k:[1,n-2]})
+# Output primal and adjoint files
+printfunction(name="wave3d", loopnestlist=[lp])
+printfunction(name="wave3d_perf_b", loopnestlist=lp.diff({u:u_b, u_1:u_1_b, u_2: u_2_b}))
+
+
+######## 1D Burgers Equation Example ########
+# Build stencil expression
+ap = sp.functions.Max(u_1(i),0)
+am = sp.functions.Min(u_1(i),0)
+uxm = u_1(i)-u_1(i-1)
+uxp = u_1(i+1)-u_1(i)
 ux = ap*uxm+am*uxp
-expr_upwind = u_1_c - C * ux + D * (u_1_r + u_1_l - 2.0*u_1_c)
-f1d = SympyExprStencil(expr_upwind,[u_1_c, u_1_l, u_1_r])
-stexpr1d = StencilExpression(u, [u_1], [i], [[[0],[-1],[1]]],f1d)
-loop1d = LoopNest(body=stexpr1d, bounds={i:[1,n-2]})
-printfunction(name="burgers1d", loopnestlist=[loop1d], counters=[i], arrays=[u,u_1], scalars=[C,D], ints=[n])
-printfunction(name="burgers1d_perf_b", loopnestlist=loop1d.diff({u:u_b, u_1:u_1_b}), counters=[i], arrays=[u,u_1,u_b,u_1_b], scalars=[C,D], ints=[n])
-
-# 1D Wave Equation example
-c = sp.Function("c")
-u_1 = sp.Function("u_1")
-u_2 = sp.Function("u_2")
-u = sp.Function("u")
-u_1_b = sp.Function("u_1_b")
-u_2_b = sp.Function("u_2_b")
-u_b = sp.Function("u_b")
-u_1_c, u_1_w, u_1_e, u_2_c, c_c = sp.symbols("u_1_c, u_1_w, u_1_e, u_2_c, c_c")
-i = sp.symbols("i")
-D, n = sp.symbols("D, n")
-#dt, dx, dy, n = sp.symbols("dt, dx, dy, n")
-#Cx = (c_c*dt/dx)**2
-#Cy = (c_c*dt/dy)**2
-u_xx = u_1_w - 2*u_1_c + u_1_e
-expr = 2.0*u_1_c - u_2_c + c_c*D*(u_xx)
-f2d = SympyExprStencil(expr,[u_1_c, u_1_w, u_1_e, u_2_c, c_c])
-stexpr2d = StencilExpression(u, [u_1,u_2,c], [i], [[[0],[-1],[1]],[[0]],[[0]]],f2d)
-loop2d = LoopNest(body=stexpr2d, bounds={i:[1,n-2]})
-printfunction(name="wave1d", loopnestlist=[loop2d], counters=[i], arrays=[u,u_1,u_2,c], scalars=[D], ints=[n])
-printfunction(name="wave1d_perf_b", loopnestlist=loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b}), counters=[i], arrays=[u,u_1,u_2,c,u_b,u_1_b,u_2_b], scalars=[D], ints=[n])
+expr = u_1(i) - C * ux + D * (u_1(i+1) + u_1(i-1) - 2.0*u_1(i))
+# Build LoopNest object for this expression
+lp = makeLoopNest(lhs=u(i), rhs=expr, counters = [i], bounds={i:[1,n-2]})
+# Output primal and adjoint files
+printfunction(name="burgers1d", loopnestlist=[lp])
+printfunction(name="burgers1d_perf_b", loopnestlist=lp.diff({u:u_b, u_1:u_1_b}))

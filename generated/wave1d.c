@@ -7,10 +7,10 @@
 #define Heaviside(x) ((x>=0)?1.0:0.0)
 
 #define u(x) u[x]
+#define c(x) c[x]
 #define u_1(x) u_1[x]
 #define u_2(x) u_2[x]
-#define c(x) c[x]
-void wave1d(double* u, double* u_1, double* u_2, double* c, double D, int n) {
+void wave1d(double* u, double* c, double* u_1, double* u_2, double D, int n) {
     int i;
     #pragma omp parallel for private(i)
     for ( i=1; i<=n - 2; i++ ) {

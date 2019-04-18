@@ -7,13 +7,13 @@
 #define Heaviside(x) ((x>=0)?1.0:0.0)
 
 #define u(x,xx,xxx) u[x][xx][xxx]
-#define u_1(x,xx,xxx) u_1[x][xx][xxx]
-#define u_2(x,xx,xxx) u_2[x][xx][xxx]
-#define c(x,xx,xxx) c[x][xx][xxx]
 #define u_b(x,xx,xxx) u_b[x][xx][xxx]
+#define c(x,xx,xxx) c[x][xx][xxx]
+#define u_1(x,xx,xxx) u_1[x][xx][xxx]
 #define u_1_b(x,xx,xxx) u_1_b[x][xx][xxx]
+#define u_2(x,xx,xxx) u_2[x][xx][xxx]
 #define u_2_b(x,xx,xxx) u_2_b[x][xx][xxx]
-void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, double*** u_b, double*** u_1_b, double*** u_2_b, double D, int n) {
+void wave3d_perf_b(double*** u, double*** u_b, double*** c, double*** u_1, double*** u_1_b, double*** u_2, double*** u_2_b, double D, int n) {
     int i;
     int j;
     int k;
