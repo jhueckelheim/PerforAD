@@ -14,46 +14,73 @@ void an_head (double ***u, double ***u_1, double  ***u_2, double ***c, double **
 double ***allocate3Ddouble(int d1, int d2, int d3)
 {
     int i,j, idx;
-    double *p = (double*) malloc(d1 * d2 * d3 * sizeof(double));
-    double ***q = (double***) malloc(d1 * sizeof(double**));
-    double **r = (double**) malloc(d1 * d2 * sizeof(double*));
-    for (i = 0; i < d1; i++)
-    {
-      q[i] = &r[i];
+    double ***p = (double***) malloc(d1*sizeof(double**) + d1*d2*sizeof(double*) + d1 * d2 * d3 * sizeof(double));
+    //printf("D &p:%ld p:%ld sizeof(double): %ld \n", &p, p, sizeof(double)); 
+    for (i = 0; i < d1; i++){
+      p[i] = p+d1+d2*i;
+      //printf("D &p[%d]:%ld p[%d]:%ld p+d1+i:%ld \n", i, &(p[i]),i, p[i], p+d1+d2*i); 
+    }
+    for (i = 0; i < d1; i++){
       for (j = 0; j < d2; j++){
-        idx = d1*d2*i;
-        q[i][j] = &p[idx]; 
+        p[i][j] = p + d1+d1*d2+d3*(i*d2+j);
+        //printf("D &(p[%d][%d]): %ld p[%d][%d]: %ld  d3*sizeof(double)*(i*d2+j): %ld \n",i,j, &(p[i][j]), i,j, p[i][j], p+ d1+d1*d2+d3*sizeof(double)*(i*d2+j));
       }
     }
-    return q;
+    return p;
 } 
 
 DERIV_TYPE ***allocate3DDERIV_TYPE(int d1, int d2, int d3)
 {
     int i,j, idx;
-    DERIV_TYPE *p = (DERIV_TYPE*) malloc(d1 * d2 * d3 * sizeof(DERIV_TYPE));
-    DERIV_TYPE ***q = (DERIV_TYPE***) malloc(d1 * sizeof(DERIV_TYPE**));
-    DERIV_TYPE **r = (DERIV_TYPE**) malloc(d1 * d2 * sizeof(DERIV_TYPE*));
-    for (i = 0; i < d1; i++)
-    {
-      q[i] = &r[i];
+    DERIV_TYPE ***p = (DERIV_TYPE***) malloc(d1*sizeof(DERIV_TYPE**) + d1*d2*sizeof(DERIV_TYPE*) + d1 * d2 * d3 * sizeof(DERIV_TYPE));
+    //printf("D &p:%ld p:%ld sizeof(DERIV_TYPE): %ld \n", &p, p, sizeof(DERIV_TYPE)); 
+    for (i = 0; i < d1; i++){
+      p[i] = p+d1+d2*i;
+      //printf("D &p[%d]:%ld p[%d]:%ld p+d1+i:%ld \n", i, &(p[i]),i, p[i], p+d1+d2*i); 
+    }
+    for (i = 0; i < d1; i++){
       for (j = 0; j < d2; j++){
-        idx = d1*d2*i;
-        q[i][j] = &p[idx]; 
+        p[i][j] = p + d1+d1*d2+d3*sizeof(DERIV_TYPE)/8*(i*d2+j);
+        //printf("D &(p[%d][%d]): %ld p[%d][%d]: %ld  d3*sizeof(DERIV_TYPE)*(i*d2+j): %ld \n",i,j, &(p[i][j]), i,j, p[i][j], p+ d1+d1*d2+d3*sizeof(DERIV_TYPE)*(i*d2+j));
+      }
+    }
+    return p;
+}
+/* 
+DERIV_TYPE ***allocate3Ddouble(int d1, int d2, int d3)
+{
+    int i,j, idx;
+    double ***q = (double***) malloc(d1 * sizeof(double**));
+    for (i = 0; i < d1; i++){
+      q[i] = (double**) malloc(d2 * sizeof(double*));
+      for (j = 0; j < d2; j++){
+        q[i][j] = (double*) malloc(d3 * sizeof(double));
       }
     }
     return q;
 } 
-/*
-void free3Ddouble(double **arr){
-  free((arr[0]));
+
+
+DERIV_TYPE ***allocate3DDERIV_TYPE(int d1, int d2, int d3)
+{
+    int i,j, idx;
+    DERIV_TYPE ***q = (DERIV_TYPE***) malloc(d1 * sizeof(DERIV_TYPE**));
+    for (i = 0; i < d1; i++){
+      q[i] = (DERIV_TYPE**) malloc(d2 * sizeof(DERIV_TYPE*));
+      for (j = 0; j < d2; j++){
+        q[i][j] = (DERIV_TYPE*) malloc(d3 * sizeof(DERIV_TYPE));
+      }
+    }
+    return q;
+} */
+
+void free3Ddouble(double ***arr){
   free(arr);
 }
 
-void free3DDERIV_TYPE(DERIV_TYPE **arr){
-  free((arr[0]));
+void free3DDERIV_TYPE(DERIV_TYPE ***arr){
   free(arr);
-}*/
+}
 
 int main()
 {
@@ -94,7 +121,7 @@ int main()
   }
 
   /* dd step size */
-  h=.0001;
+  h=.0000001;
   for (i = 0; i < N; i++){
     for (j = 0; j < N; j++){
       for (k = 0; k < N; k++){
@@ -163,6 +190,7 @@ int main()
   // Initialize parameters
   DERIV_val(ad_D) = 0.5;
   ZeroDeriv(ad_D);
+  ZeroDerivthree_tensor(ad_c, N, N, N);
   // Initialize the value of the independent variable ad_x
   for (i = 0; i < N; i++){
     for (j = 0; j < N; j++){
@@ -226,22 +254,23 @@ int main()
       }
     }
   } 
-  printf("Adjoint Output c \n");
-  printf("i\tADIC\tPerforAD\n");
-  for (i = 0; i < N; i++){
-    for (j = 0; j < N; j++){
-      for (k = 0; k < N; k++) {
-        temp_adj = 0.0; 
-        for (l = 0; l <ADIC_GRADVEC_LENGTH; l++) {
-          temp_adj +=  DERIV_grad(ad_c[i][j][k])[l];
-        }
-        printf("%d %d %d %lf\t%lf \n", i, j, k, temp_adj, c_b[i][j][k]); 
-      }
-    }
-  } 
+  free3Ddouble(u_1ph);
+  free3Ddouble(uph);
+  free3Ddouble(dd_u_1);
+  free3Ddouble(u_b);
+  free3Ddouble(u_1_b);
+  free3Ddouble(u_2_b);
+  free3Ddouble(c_b);
 #endif  
   ADIC_Finalize();
-
+  free3DDERIV_TYPE(ad_u_1);
+  free3DDERIV_TYPE(ad_u_2);
+  free3DDERIV_TYPE(ad_u);
+  free3DDERIV_TYPE(ad_c);
+  free3Ddouble(u_1);
+  free3Ddouble(u_2);
+  free3Ddouble(u);
+  free3Ddouble(c);
   return 0;
 }
 #ifdef DEBUG
