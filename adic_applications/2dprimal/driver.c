@@ -11,44 +11,64 @@ void ad_head(DERIV_TYPE **outv,DERIV_TYPE **inv,DERIV_TYPE **vel,int n);
 void an_head (double **outv, double **inv,  double **vel, double **outv_b, double **inv_b, double **vel_b,int n);
 #endif
 
+double **allocate2Ddouble(int d1, int d2)
+{
+    int i;
+    double *p = (double*) malloc(d1 * d2 * sizeof(double));
+    double **q = (double**) malloc(d1 * sizeof(double*));
+    for (i = 0; i < d1; i++)
+    {
+      int idx = d1 *i;
+      q[i] = &p[idx];
+    }
+    return q;
+} 
+
+DERIV_TYPE **allocate2DDERIV_TYPE(int d1, int d2)
+{
+    int i;
+    DERIV_TYPE *p = (DERIV_TYPE*) malloc(d1 * d2 * sizeof(DERIV_TYPE));
+    DERIV_TYPE **q = (DERIV_TYPE**) malloc(d1 * sizeof(DERIV_TYPE*));
+    for (i = 0; i < d1; i++)
+    {
+      int idx = d1 *i;
+      q[i] = &p[idx];
+    }
+    return q;
+}
+
+void free2Ddouble(double **arr){
+  free((arr[0]));
+  free(arr);
+}
+
+void free2DDERIV_TYPE(DERIV_TYPE **arr){
+  free((arr[0]));
+  free(arr);
+}
+
+
 int main()
 {
   double **outv, **inv, **vel;
   DERIV_TYPE **ad_outv, **ad_inv, **ad_vel;
   int i,j,k,l;
-  outv= (double**) malloc(N*sizeof(double*));
-  inv= (double**) malloc(N*sizeof(double*));
-  vel= (double**) malloc(N*sizeof(double*));
-  ad_outv= (DERIV_TYPE**) malloc(N*sizeof(DERIV_TYPE*));
-  ad_inv= (DERIV_TYPE**) malloc(N*sizeof(DERIV_TYPE*));
-  ad_vel= (DERIV_TYPE**) malloc(N*sizeof(DERIV_TYPE*));
-  
-  for (i = 0; i < N; i++){
-    outv[i]= (double*) malloc(N*sizeof(double));
-    inv[i]= (double*) malloc(N*sizeof(double));
-    vel[i]= (double*) malloc(N*sizeof(double));
-    ad_outv[i]= (DERIV_TYPE*) malloc(N*sizeof(DERIV_TYPE));
-    ad_inv[i]= (DERIV_TYPE*) malloc(N*sizeof(DERIV_TYPE));
-    ad_vel[i]= (DERIV_TYPE*) malloc(N*sizeof(DERIV_TYPE));
-  }
+  outv = allocate2Ddouble(N,N);
+  inv = allocate2Ddouble(N,N);
+  vel = allocate2Ddouble(N,N);
+  ad_outv = allocate2DDERIV_TYPE(N,N);
+  ad_inv = allocate2DDERIV_TYPE(N,N);
+  ad_vel = allocate2DDERIV_TYPE(N,N);
 #ifdef DEBUG
   double **invph, **outvph;
   double h, **dd_inv;
   double **outv_b, **inv_b, **vel_b;
-  invph= (double**) malloc(N*sizeof(double*));
-  outvph= (double**) malloc(N*sizeof(double*));
-  dd_inv= (double**) malloc(N*sizeof(double*));
-  outv_b= (double**) malloc(N*sizeof(double*));
-  inv_b= (double**) malloc(N*sizeof(double*));
-  vel_b= (double**) malloc(N*sizeof(double*));
-  for (i = 0; i < N; i++){
-    invph[i]= (double*) malloc(N*sizeof(double));
-    outvph[i]= (double*) malloc(N*sizeof(double));
-    dd_inv[i]= (double*) malloc(N*sizeof(double));
-    outv_b[i]= (double*) malloc(N*sizeof(double));
-    inv_b[i]= (double*) malloc(N*sizeof(double));
-    vel_b[i]= (double*) malloc(N*sizeof(double));
-  }
+  invph = allocate2Ddouble(N,N);
+  outvph = allocate2Ddouble(N,N);
+  dd_inv = allocate2Ddouble(N,N);
+  outv_b = allocate2Ddouble(N,N);
+  inv_b = allocate2Ddouble(N,N);
+  vel_b = allocate2Ddouble(N,N);
 
   for (i = 0; i < N; i++){
     for (j = 0; j < N; j++){
@@ -166,9 +186,20 @@ int main()
       printf("%d %d %lf\t%lf \n", i, j, temp_adj, vel_b[i][j]); 
    }
   }
+  free2Ddouble(invph);
+  free2Ddouble(outvph);
+  free2Ddouble(dd_inv);
+  free2Ddouble(outv_b);
+  free2Ddouble(inv_b);
+  free2Ddouble(vel_b);
 #endif  
   ADIC_Finalize();
-
+  free2DDERIV_TYPE(ad_inv);
+  free2DDERIV_TYPE(ad_vel);
+  free2DDERIV_TYPE(ad_outv);
+  free2Ddouble(inv);
+  free2Ddouble(vel);
+  free2Ddouble(outv);
   return 0;
 }
 #ifdef DEBUG
