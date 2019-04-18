@@ -1,3 +1,6 @@
+driver1dwave: main.c wave1d.c wave1d_b.c wave1d_perf_b.c
+	gcc -o driver1dwave -DN=10 -O3 -fopenmp main.c wave1d.c wave1d_b.c wave1d_perf_b.c adstack/adBuffer.c adstack/adStack.c -I adstack/
+
 diff: wave1d_b wave3d_b burgers1d_b
 
 wave3d_b: wave3d.c

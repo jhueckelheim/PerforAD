@@ -12,7 +12,7 @@
 #define c(x) c[x]
 void wave1d(double* u, double* u_1, double* u_2, double* c, double D, int n) {
     int i;
-    #pragma omp for private(i)
+    #pragma omp parallel for private(i)
     for ( i=1; i<=n - 2; i++ ) {
         u(i) += D*(-2*u_1(i) + u_1(i - 1) + u_1(i + 1))*c(i) + 2.0*u_1(i) - u_2(i);
     }

@@ -10,7 +10,7 @@
 #define u_1(x) u_1[x]
 void burgers1d(double* u, double* u_1, double C, double D, int n) {
     int i;
-    #pragma omp for private(i)
+    #pragma omp parallel for private(i)
     for ( i=1; i<=n - 2; i++ ) {
         u(i) += -C*((-u_1(i) + u_1(i + 1))*Min(0, u_1(i)) + (u_1(i) - u_1(i - 1))*Max(0, u_1(i))) + D*(-2.0*u_1(i) + u_1(i - 1) + u_1(i + 1)) + u_1(i);
     }

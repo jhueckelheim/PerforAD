@@ -22,7 +22,7 @@ void burgers1d_perf_b(double* u, double* u_1, double* u_b, double* u_1_b, double
     u_1_b(i) += (-C*((-u_1(i) + u_1(i + 1))*Heaviside(-u_1(i)) + (u_1(i) - u_1(i - 1))*Heaviside(u_1(i)) + Max(0, u_1(i)) - Min(0, u_1(i))) - 2.0*D + 1)*u_b(i);
     i=n - 1;
     u_1_b(i) += (-C*Min(0, u_1(i - 1)) + D)*u_b(i - 1);
-    #pragma omp for private(i)
+    #pragma omp parallel for private(i)
     for ( i=2; i<=n - 3; i++ ) {
         u_1_b(i) += (C*Max(0, u_1(i + 1)) + D)*u_b(i + 1);
         u_1_b(i) += (-C*((-u_1(i) + u_1(i + 1))*Heaviside(-u_1(i)) + (u_1(i) - u_1(i - 1))*Heaviside(u_1(i)) + Max(0, u_1(i)) - Min(0, u_1(i))) - 2.0*D + 1)*u_b(i);

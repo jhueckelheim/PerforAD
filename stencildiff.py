@@ -11,11 +11,6 @@ class LoopNest:
     self.counters = list(bounds.keys())
     self.bounds = bounds
 
-  #def __str__(self):
-  #  return self.loop.code(outermost=True)
-  #  omp = "#pragma omp parallel for private(%s)"%(", ".join(map(str,self.counters)))
-  #  return str("%s\n%s"%(omp,self.loop))
-
   def __str__(self):
     body = ""
     try:
@@ -72,7 +67,7 @@ class LoopNest:
         # the outermost nontrivial loop also gets an OpenMP pragma
         omp = ""
         if(outermost[0] == counter):
-          omp = "#pragma omp for private(%s)\n"%",".join(map(str,outermost[1]))
+          omp = "#pragma omp parallel for private(%s)\n"%",".join(map(str,outermost[1]))
         body = "%sfor ( %s=%s; %s<=%s; %s++ ) {\n%s\n}"%(omp,counter,start,counter,end,counter,textwrap.indent(str(body),4*" "))
       # trivial loops (those with exactly one iteration) just get a statement.
       else:

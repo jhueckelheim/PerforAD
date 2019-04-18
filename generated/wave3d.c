@@ -14,7 +14,7 @@ void wave3d(double*** u, double*** u_1, double*** u_2, double*** c, double D, in
     int i;
     int j;
     int k;
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=1; i<=n - 2; i++ ) {
         for ( j=1; j<=n - 2; j++ ) {
             for ( k=1; k<=n - 2; k++ ) {

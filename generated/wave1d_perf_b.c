@@ -27,7 +27,7 @@ void wave1d_perf_b(double* u, double* u_1, double* u_2, double* c, double* u_b, 
     u_2_b(i) += -u_b(i);
     i=n - 1;
     u_1_b(i) += D*c(i - 1)*u_b(i - 1);
-    #pragma omp for private(i)
+    #pragma omp parallel for private(i)
     for ( i=2; i<=n - 3; i++ ) {
         u_1_b(i) += D*c(i + 1)*u_b(i + 1);
         u_1_b(i) += (-2*D*c(i) + 2.0)*u_b(i);

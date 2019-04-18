@@ -18,7 +18,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
     int j;
     int k;
     i=0;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=1; j<=n - 2; j++ ) {
         for ( k=1; k<=n - 2; k++ ) {
             u_1_b(i,j,k) += D*c(i + 1, j, k)*u_b(i + 1, j, k);
@@ -26,7 +26,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
     }
     i=n - 2;
     j=0;
-    #pragma omp for private(k)
+    #pragma omp parallel for private(k)
     for ( k=1; k<=n - 2; k++ ) {
         u_1_b(i,j,k) += D*c(i, j + 1, k)*u_b(i, j + 1, k);
     }
@@ -56,7 +56,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
     u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     i=n - 2;
     j=n - 2;
-    #pragma omp for private(k)
+    #pragma omp parallel for private(k)
     for ( k=2; k<=n - 3; k++ ) {
         u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
         u_1_b(i,j,k) += (-6*D*c(i, j, k) + 2.0)*u_b(i, j, k);
@@ -91,7 +91,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
     u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     i=n - 2;
     j=1;
-    #pragma omp for private(k)
+    #pragma omp parallel for private(k)
     for ( k=2; k<=n - 3; k++ ) {
         u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
         u_1_b(i,j,k) += D*c(i, j + 1, k)*u_b(i, j + 1, k);
@@ -102,18 +102,18 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
     }
     i=n - 2;
     j=n - 1;
-    #pragma omp for private(k)
+    #pragma omp parallel for private(k)
     for ( k=1; k<=n - 2; k++ ) {
         u_1_b(i,j,k) += D*c(i, j - 1, k)*u_b(i, j - 1, k);
     }
     i=n - 2;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=2; j<=n - 3; j++ ) {
         k=0;
         u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
     }
     i=n - 2;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=2; j<=n - 3; j++ ) {
         k=n - 2;
         u_1_b(i,j,k) += D*c(i, j + 1, k)*u_b(i, j + 1, k);
@@ -124,7 +124,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
         u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     }
     i=n - 2;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=2; j<=n - 3; j++ ) {
         k=1;
         u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
@@ -135,13 +135,13 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
         u_1_b(i,j,k) += D*c(i, j - 1, k)*u_b(i, j - 1, k);
     }
     i=n - 2;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=2; j<=n - 3; j++ ) {
         k=n - 1;
         u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     }
     i=n - 2;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=2; j<=n - 3; j++ ) {
         for ( k=2; k<=n - 3; k++ ) {
             u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
@@ -155,7 +155,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
     }
     i=1;
     j=0;
-    #pragma omp for private(k)
+    #pragma omp parallel for private(k)
     for ( k=1; k<=n - 2; k++ ) {
         u_1_b(i,j,k) += D*c(i, j + 1, k)*u_b(i, j + 1, k);
     }
@@ -185,7 +185,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
     u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     i=1;
     j=n - 2;
-    #pragma omp for private(k)
+    #pragma omp parallel for private(k)
     for ( k=2; k<=n - 3; k++ ) {
         u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
         u_1_b(i,j,k) += D*c(i + 1, j, k)*u_b(i + 1, j, k);
@@ -220,7 +220,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
     u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     i=1;
     j=1;
-    #pragma omp for private(k)
+    #pragma omp parallel for private(k)
     for ( k=2; k<=n - 3; k++ ) {
         u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
         u_1_b(i,j,k) += D*c(i, j + 1, k)*u_b(i, j + 1, k);
@@ -231,18 +231,18 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
     }
     i=1;
     j=n - 1;
-    #pragma omp for private(k)
+    #pragma omp parallel for private(k)
     for ( k=1; k<=n - 2; k++ ) {
         u_1_b(i,j,k) += D*c(i, j - 1, k)*u_b(i, j - 1, k);
     }
     i=1;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=2; j<=n - 3; j++ ) {
         k=0;
         u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
     }
     i=1;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=2; j<=n - 3; j++ ) {
         k=n - 2;
         u_1_b(i,j,k) += D*c(i, j + 1, k)*u_b(i, j + 1, k);
@@ -253,7 +253,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
         u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     }
     i=1;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=2; j<=n - 3; j++ ) {
         k=1;
         u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
@@ -264,13 +264,13 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
         u_1_b(i,j,k) += D*c(i, j - 1, k)*u_b(i, j - 1, k);
     }
     i=1;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=2; j<=n - 3; j++ ) {
         k=n - 1;
         u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     }
     i=1;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=2; j<=n - 3; j++ ) {
         for ( k=2; k<=n - 3; k++ ) {
             u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
@@ -283,26 +283,26 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
         }
     }
     i=n - 1;
-    #pragma omp for private(k,j)
+    #pragma omp parallel for private(k,j)
     for ( j=1; j<=n - 2; j++ ) {
         for ( k=1; k<=n - 2; k++ ) {
             u_1_b(i,j,k) += D*c(i - 1, j, k)*u_b(i - 1, j, k);
         }
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=0;
         for ( k=1; k<=n - 2; k++ ) {
             u_1_b(i,j,k) += D*c(i, j + 1, k)*u_b(i, j + 1, k);
         }
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=n - 2;
         k=0;
         u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=n - 2;
         k=n - 2;
@@ -313,7 +313,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
         u_1_b(i,j,k) += D*c(i, j - 1, k)*u_b(i, j - 1, k);
         u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=n - 2;
         k=1;
@@ -324,13 +324,13 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
         u_1_b(i,j,k) += D*c(i - 1, j, k)*u_b(i - 1, j, k);
         u_1_b(i,j,k) += D*c(i, j - 1, k)*u_b(i, j - 1, k);
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=n - 2;
         k=n - 1;
         u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=n - 2;
         for ( k=2; k<=n - 3; k++ ) {
@@ -343,13 +343,13 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
             u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
         }
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=1;
         k=0;
         u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=1;
         k=n - 2;
@@ -360,7 +360,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
         u_1_b(i,j,k) += D*c(i - 1, j, k)*u_b(i - 1, j, k);
         u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=1;
         k=1;
@@ -371,13 +371,13 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
         u_2_b(i,j,k) += -u_b(i, j, k);
         u_1_b(i,j,k) += D*c(i - 1, j, k)*u_b(i - 1, j, k);
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=1;
         k=n - 1;
         u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=1;
         for ( k=2; k<=n - 3; k++ ) {
@@ -390,21 +390,21 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
             u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
         }
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         j=n - 1;
         for ( k=1; k<=n - 2; k++ ) {
             u_1_b(i,j,k) += D*c(i, j - 1, k)*u_b(i, j - 1, k);
         }
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         for ( j=2; j<=n - 3; j++ ) {
             k=0;
             u_1_b(i,j,k) += D*c(i, j, k + 1)*u_b(i, j, k + 1);
         }
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         for ( j=2; j<=n - 3; j++ ) {
             k=n - 2;
@@ -417,7 +417,7 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
             u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
         }
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         for ( j=2; j<=n - 3; j++ ) {
             k=1;
@@ -430,14 +430,14 @@ void wave3d_perf_b(double*** u, double*** u_1, double*** u_2, double*** c, doubl
             u_1_b(i,j,k) += D*c(i, j - 1, k)*u_b(i, j - 1, k);
         }
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         for ( j=2; j<=n - 3; j++ ) {
             k=n - 1;
             u_1_b(i,j,k) += D*c(i, j, k - 1)*u_b(i, j, k - 1);
         }
     }
-    #pragma omp for private(k,j,i)
+    #pragma omp parallel for private(k,j,i)
     for ( i=2; i<=n - 3; i++ ) {
         for ( j=2; j<=n - 3; j++ ) {
             for ( k=2; k<=n - 3; k++ ) {
