@@ -247,7 +247,14 @@ inv_b = sp.Function('inv_b')
 vel_b = sp.Function('vel_b')
 
 def printfunction(name, loopnestlist, counters, arrays, scalars, ints):
-  funcdefs = "#include <math.h>\n#define Max(x,y) fmax(x,y)\n#define Min(x,y) fmin(x,y)\n#define Heaviside(x) ((x>=0)?1.0:0.0)"
+  funcdefs = """
+#ifndef TAPENADE
+#include <math.h>
+#endif
+#define Max(x,y) fmax(x,y)
+#define Min(x,y) fmin(x,y)
+#define Heaviside(x) ((x>=0)?1.0:0.0)
+"""
   arrtransformlist = []
   for varname in arrays:
     arglist = list(map(lambda x: x*"x",range(1,len(counters)+1)))
@@ -294,7 +301,7 @@ f2d = SympyExprStencil(expr,[u_1_c, u_1_w, u_1_e, u_1_n, u_1_s, u_1_t, u_1_b, u_
 stexpr2d = StencilExpression(u, [u_1,u_2,c], [i,j,k], [[[0,0,0],[-1,0,0],[1,0,0],[0,-1,0],[0,1,0],[0,0,1],[0,0,-1]],[[0,0,0]],[[0,0,0]]],f2d)
 loop2d = LoopNest(body=stexpr2d, bounds={i:[1,n-2],j:[1,n-2],k:[1,n-2]})
 printfunction(name="wave3d", loopnestlist=[loop2d], counters=[i,j,k], arrays=[u,u_1,u_2,c], scalars=[D], ints=[n])
-printfunction(name="wave3d_b", loopnestlist=loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b}), counters=[i,j,k], arrays=[u,u_1,u_2,c,u_b,u_1_b,u_2_b], scalars=[D], ints=[n])
+printfunction(name="wave3d_perf_b", loopnestlist=loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b}), counters=[i,j,k], arrays=[u,u_1,u_2,c,u_b,u_1_b,u_2_b], scalars=[D], ints=[n])
 
 # 1D Burgers Equation example
 # C = dt/dx
@@ -310,7 +317,7 @@ f1d = SympyExprStencil(expr_upwind,[u_1_c, u_1_l, u_1_r])
 stexpr1d = StencilExpression(u, [u_1], [i], [[[0],[-1],[1]]],f1d)
 loop1d = LoopNest(body=stexpr1d, bounds={i:[1,n-2]})
 printfunction(name="burgers1d", loopnestlist=[loop1d], counters=[i], arrays=[u,u_1], scalars=[C,D], ints=[n])
-printfunction(name="burgers1d_b", loopnestlist=loop1d.diff({u:u_b, u_1:u_1_b}), counters=[i], arrays=[u,u_1,u_b,u_1_b], scalars=[C,D], ints=[n])
+printfunction(name="burgers1d_perf_b", loopnestlist=loop1d.diff({u:u_b, u_1:u_1_b}), counters=[i], arrays=[u,u_1,u_b,u_1_b], scalars=[C,D], ints=[n])
 
 # 1D Wave Equation example
 c = sp.Function("c")
@@ -332,4 +339,4 @@ f2d = SympyExprStencil(expr,[u_1_c, u_1_w, u_1_e, u_2_c, c_c])
 stexpr2d = StencilExpression(u, [u_1,u_2,c], [i], [[[0],[-1],[1]],[[0]],[[0]]],f2d)
 loop2d = LoopNest(body=stexpr2d, bounds={i:[1,n-2]})
 printfunction(name="wave1d", loopnestlist=[loop2d], counters=[i], arrays=[u,u_1,u_2,c], scalars=[D], ints=[n])
-printfunction(name="wave1d_b", loopnestlist=loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b}), counters=[i], arrays=[u,u_1,u_2,c,u_b,u_1_b,u_2_b], scalars=[D], ints=[n])
+printfunction(name="wave1d_perf_b", loopnestlist=loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b}), counters=[i], arrays=[u,u_1,u_2,c,u_b,u_1_b,u_2_b], scalars=[D], ints=[n])
