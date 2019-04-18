@@ -63,8 +63,9 @@ class LoopNest:
       # this variable will contain the actual outermost loop, and whatever
       # counters we had found within that loop.
       outermost = (counter,counters_within.copy())
-      continue
     for counter in rcounters:
+      start = self.bounds[counter][0]
+      end = self.bounds[counter][1]
       is_a_loop = loops[counter]
       # nontrivial loops get a for(...){...} construct.
       if(is_a_loop):
@@ -245,13 +246,25 @@ outv_b = sp.Function('outv_b')
 inv_b = sp.Function('inv_b')
 vel_b = sp.Function('vel_b')
 
-def printcpp(varnames):
-  print("#define Max(x,y) max(x,y)")
-  print("#define Min(x,y) min(x,y)")
-  print("#define Heaviside(x) ((x>=0)?1.0:0.0)")
-  for varname,ndims in varnames:
-    arglist = list(map(lambda x: x*"x",range(1,ndims+1)))
-    print("#define %s(%s) %s[%s]"%(varname,",".join(arglist),varname,"][".join(arglist)))
+def printfunction(name, loopnestlist, counters, arrays, scalars, ints):
+  funcdefs = "#include <math.h>\n#define Max(x,y) fmax(x,y)\n#define Min(x,y) fmin(x,y)\n#define Heaviside(x) ((x>=0)?1.0:0.0)"
+  arrtransformlist = []
+  for varname in arrays:
+    arglist = list(map(lambda x: x*"x",range(1,len(counters)+1)))
+    arrtransformlist.append("#define %s(%s) %s[%s]"%(varname,",".join(arglist),varname,"][".join(arglist)))
+  cpp = "%s\n%s\n"%(funcdefs,"\n".join(arrtransformlist))
+  args = list(map(lambda x: "double%s %s"%(len(counters)*"*",x),arrays))
+  args = args + list(map(lambda x: "double %s"%(x),scalars))
+  args = args + list(map(lambda x: "int %s"%(x),ints))
+  declarations = "\n".join(list(map(lambda x: "int %s;"%x, counters)))
+  body = [textwrap.indent(declarations,4*" ")]
+  for loopnest in loopnestlist:
+    body.append(textwrap.indent(str(loopnest),4*" "))
+  filename = "generated/%s.c"%name
+  print("Writing to %s"%filename)
+  file = open(filename,"w")
+  file.write("%svoid %s(%s) {\n%s\n}"%(cpp,name, ", ".join(args), "\n".join(body)))
+  file.close() 
 
 #f = SympyFuncStencil("foo",[l,c,r])
 #stexpr = StencilExpression(outv, [inv], [i], [[[-1],[0],[1]]],f)
@@ -280,10 +293,8 @@ expr = 2.0*u_1_c - u_2_c + c_c*D*(u_xx + u_yy + u_zz)
 f2d = SympyExprStencil(expr,[u_1_c, u_1_w, u_1_e, u_1_n, u_1_s, u_1_t, u_1_b, u_2_c, c_c])
 stexpr2d = StencilExpression(u, [u_1,u_2,c], [i,j,k], [[[0,0,0],[-1,0,0],[1,0,0],[0,-1,0],[0,1,0],[0,0,1],[0,0,-1]],[[0,0,0]],[[0,0,0]]],f2d)
 loop2d = LoopNest(body=stexpr2d, bounds={i:[1,n-2],j:[1,n-2],k:[1,n-2]})
-printcpp([(u,3),(u_1,3),(u_2,3),(c,3),(u_b,3),(u_1_b,3),(u_2_b,3),(c,3)])
-print(loop2d)
-for lp in (loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b})):
-  print(lp)
+printfunction(name="wave3d", loopnestlist=[loop2d], counters=[i,j,k], arrays=[u,u_1,u_2,c], scalars=[D], ints=[n])
+printfunction(name="wave3d_b", loopnestlist=loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b}), counters=[i,j,k], arrays=[u,u_1,u_2,c,u_b,u_1_b,u_2_b], scalars=[D], ints=[n])
 
 # 1D Burgers Equation example
 # C = dt/dx
@@ -298,10 +309,8 @@ expr_upwind = u_1_c - C * ux + D * (u_1_r + u_1_l - 2.0*u_1_c)
 f1d = SympyExprStencil(expr_upwind,[u_1_c, u_1_l, u_1_r])
 stexpr1d = StencilExpression(u, [u_1], [i], [[[0],[-1],[1]]],f1d)
 loop1d = LoopNest(body=stexpr1d, bounds={i:[1,n-2]})
-printcpp([(u,1),(u_1,1),(u_b,1),(u_1_b,1)])
-print(loop1d)
-for lp in (loop1d.diff({u:u_b, u_1:u_1_b})):
-  print(lp)
+printfunction(name="burgers1d", loopnestlist=[loop1d], counters=[i], arrays=[u,u_1], scalars=[C,D], ints=[n])
+printfunction(name="burgers1d_b", loopnestlist=loop1d.diff({u:u_b, u_1:u_1_b}), counters=[i], arrays=[u,u_1,u_b,u_1_b], scalars=[C,D], ints=[n])
 
 # 1D Wave Equation example
 c = sp.Function("c")
@@ -319,10 +328,8 @@ D, n = sp.symbols("D, n")
 #Cy = (c_c*dt/dy)**2
 u_xx = u_1_w - 2*u_1_c + u_1_e
 expr = 2.0*u_1_c - u_2_c + c_c*D*(u_xx)
-f2d = SympyExprStencil(expr,[u_1_c, u_1_w, u_1_e, u_2_c, u_1_t])
+f2d = SympyExprStencil(expr,[u_1_c, u_1_w, u_1_e, u_2_c, c_c])
 stexpr2d = StencilExpression(u, [u_1,u_2,c], [i], [[[0],[-1],[1]],[[0]],[[0]]],f2d)
 loop2d = LoopNest(body=stexpr2d, bounds={i:[1,n-2]})
-printcpp([(u,1),(u_1,1),(u_2,1),(c,1),(u_b,1),(u_1_b,1),(u_2_b,1),(c,1)])
-print(loop2d)
-for lp in (loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b})):
-  print(lp)
+printfunction(name="wave1d", loopnestlist=[loop2d], counters=[i], arrays=[u,u_1,u_2,c], scalars=[D], ints=[n])
+printfunction(name="wave1d_b", loopnestlist=loop2d.diff({u:u_b, u_1:u_1_b, u_2: u_2_b}), counters=[i], arrays=[u,u_1,u_2,c,u_b,u_1_b,u_2_b], scalars=[D], ints=[n])
