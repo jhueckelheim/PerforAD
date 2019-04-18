@@ -8,7 +8,7 @@
 
 #define u(x) u[x]
 #define u_1(x) u_1[x]
-void burgers1d(double* u, double* u_1, double C, double D, int n) {
+void burgers1d(double* u, double* u_1, double D, double C, int n) {
     int i;
     #pragma omp parallel for private(i)
     for ( i=1; i<=n - 2; i++ ) {

@@ -10,7 +10,7 @@
 #define u_b(x) u_b[x]
 #define u_1(x) u_1[x]
 #define u_1_b(x) u_1_b[x]
-void burgers1d_perf_b(double* u, double* u_b, double* u_1, double* u_1_b, double C, double D, int n) {
+void burgers1d_perf_b(double* u, double* u_b, double* u_1, double* u_1_b, double D, double C, int n) {
     int i;
     i=0;
     u_1_b(i) += (C*Max(0, u_1(i + 1)) + D)*u_b(i + 1);
