@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include "ad_types.h"
 
-void ad_head(DERIV_TYPE *outv,DERIV_TYPE *invec,DERIV_TYPE *vel,int n;
+void ad_head(DERIV_TYPE *outv,DERIV_TYPE *invec,DERIV_TYPE *vel,int n);
 
+void head_b (double *outv, double *inv,double *vel, double *outv_b, double *inv_b,double *vel_b);
 #ifndef _CIVL
-int main(){
+int main()
+{
   double outv[N], inv[N], vel[N];
   double outv_b[N], inv_b[N], vel_b[N];
-  DERIV_TYPE ad_outv[N], ad_inv[N], ad_vel[N];
   int i,j;
   for (i = 0; i < N; i++){
     outv[i] = 0.0;
@@ -17,14 +18,14 @@ int main(){
     inv_b[i] = 0.0;
     vel_b[i] = 0.0;
   }
-  head_b(outv, inv, vel, outv_b, inv_b, vel_b, N);
+  head_b(outv, inv, vel, outv_b, inv_b, vel_b);
   return 0;
 }
 #endif
 
-void head_b (double *outv, double *inv,double *vel, double *outv_b, double *inv_b,double *vel_b,int N);
+void head_b (double *outv, double *inv,double *vel, double *outv_b, double *inv_b,double *vel_b)
 {
-  DERIV_TYPE *ad_outv, ad_inv, ad_vel;
+  DERIV_TYPE *ad_outv, *ad_inv, *ad_vel;
   int i,j;
 
   ad_outv = (DERIV_TYPE *)malloc(N*sizeof(DERIV_TYPE));
@@ -45,19 +46,11 @@ void head_b (double *outv, double *inv,double *vel, double *outv_b, double *inv_
   ADIC_SetIndepDone();
   // Initialize the value of the independent variable ad_x
   for (i = 0; i < N; i++){
-#ifdef _CIVL
-    inv[i] = global_ad_inv[i] ;
-    vel[i] = global_ad_vel[i] ;
-#else
-    inv[i] = (i+1)*(i+1) * 0.5;
-    vel[i] = (i+1)*(i+1) * 0.5;
-#endif
-    DERIV_val(ad_outv[i]) =0.0;
+    DERIV_val(ad_outv[i]) = outv[i];
     DERIV_val(ad_inv[i]) =inv[i];
     DERIV_val(ad_vel[i]) =vel[i];
   }
   
- /* 
   // Invoke AD function 
   our_rev_mode.tape = 1; 
   our_rev_mode.adjoint = 0; 
@@ -72,7 +65,7 @@ void head_b (double *outv, double *inv,double *vel, double *outv_b, double *inv_
   our_rev_mode.tape = 0; 
   our_rev_mode.adjoint = 1; 
   ad_head(ad_outv,ad_inv,ad_vel,N);
-*/
+
 #ifdef _CIVL
   for (i = 0; i < N; i++) global_ad_outv[i] = DERIV_val(ad_outv[i]); 
 #endif
