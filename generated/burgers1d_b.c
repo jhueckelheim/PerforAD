@@ -19,7 +19,7 @@ void burgers1d_b(double *u, double *ub, double *u_1, double *u_1b, double C,
     float result2b;
     double tempb;
     double tempb0;
-    //#pragma omp for private(i)
+ 
     for (i = 1; i < n-1; ++i) {
         pushReal4(result1);
         result1 = fmin(0, u_1[i]);

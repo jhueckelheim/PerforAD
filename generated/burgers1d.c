@@ -1,4 +1,3 @@
-
 #ifndef TAPENADE
 #include <math.h>
 #endif
