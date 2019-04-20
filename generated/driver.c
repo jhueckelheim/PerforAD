@@ -1,7 +1,9 @@
 #include <time.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <omp.h>
 
+void burgers1d(double* u, double* u_1, double D, double C, int n);
 
 void init_random(double *array, int n) {
   srand(time(NULL));

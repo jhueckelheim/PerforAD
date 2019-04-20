@@ -4,27 +4,63 @@
 #include <adBuffer.h>
 
 /*
+  Differentiation of fmax in reverse (adjoint) mode:
+   gradient     of useful results: fmax b
+   with respect to varying inputs: b
+*/
+void fmax_b(double a, double b, double *bb, double fmaxb) {
+    double fmax;
+    if (a <= b)
+        *bb = *bb + fmaxb;
+}
+
+double fmax_nodiff(double a, double b) {
+    if (a > b)
+        return a;
+    else
+        return b;
+}
+
+/*
+  Differentiation of fmin in reverse (adjoint) mode:
+   gradient     of useful results: fmin b
+   with respect to varying inputs: b
+*/
+void fmin_b(double a, double b, double *bb, double fminb) {
+    double fmin;
+    if (a >= b)
+        *bb = *bb + fminb;
+}
+
+double fmin_nodiff(double a, double b) {
+    if (a < b)
+        return a;
+    else
+        return b;
+}
+
+/*
   Differentiation of burgers1d in reverse (adjoint) mode:
    gradient     of useful results: *u *u_1
    with respect to varying inputs: *u *u_1
    RW status of diff variables: *u:in-out *u_1:incr
    Plus diff mem management of: u:in u_1:in
 */
-void burgers1d_b(double *u, double *ub, double *u_1, double *u_1b, double C, 
-        double D, int n) {
+void burgers1d_b(double *u, double *ub, double *u_1, double *u_1b, double D, 
+        double C, int n) {
     int i;
-    float result1;
-    float result1b;
-    float result2;
-    float result2b;
+    double result1;
+    double result1b;
+    double result2;
+    double result2b;
     double tempb;
     double tempb0;
- 
+    //#pragma omp parallel for private(i)
     for (i = 1; i < n-1; ++i) {
-        pushReal4(result1);
-        result1 = fmin(0, u_1[i]);
-        pushReal4(result2);
-        result2 = fmax(0, u_1[i]);
+        pushReal8(result1);
+        result1 = fmin_nodiff(0, u_1[i]);
+        pushReal8(result2);
+        result2 = fmax_nodiff(0, u_1[i]);
     }
     for (i = n-2; i > 0; --i) {
         tempb = -(C*ub[i]);
@@ -34,17 +70,9 @@ void burgers1d_b(double *u, double *ub, double *u_1, double *u_1b, double C,
         result1b = (u_1[i+1]-u_1[i])*tempb;
         u_1b[i - 1] = u_1b[i - 1] + tempb0 - result2*tempb;
         result2b = (u_1[i]-u_1[i-1])*tempb;
-        adStack_startRepeat();
-        popReal4(&result2);
-        adStack_resetRepeat();
-        adStack_endRepeat();
+        popReal8(&result2);
         fmax_b(0, u_1[i], &(u_1b[i]), result2b);
-        popReal4(&result2);
-        adStack_startRepeat();
-        popReal4(&result1);
-        adStack_resetRepeat();
-        adStack_endRepeat();
+        popReal8(&result1);
         fmin_b(0, u_1[i], &(u_1b[i]), result1b);
-        popReal4(&result1);
     }
 }
