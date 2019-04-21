@@ -10,7 +10,12 @@
 #define c(x,xx,xxx) c[x][xx][xxx]
 #define u_1(x,xx,xxx) u_1[x][xx][xxx]
 #define u_2(x,xx,xxx) u_2[x][xx][xxx]
-void wave3d(double*** u, double*** c, double*** u_1, double*** u_2, double D, int n) {
+void wave3d(double* u_vec, double* c_vec, double* u_1_vec, double* u_2_vec, double D, int n) {
+  double (*u)[n][n] = (double (*)[n][n]) u_vec;
+double (*c)[n][n] = (double (*)[n][n]) c_vec;
+double (*u_1)[n][n] = (double (*)[n][n]) u_1_vec;
+double (*u_2)[n][n] = (double (*)[n][n]) u_2_vec;
+  
     int i;
     int j;
     int k;

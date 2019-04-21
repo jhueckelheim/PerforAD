@@ -33,7 +33,10 @@ int main(int argc, char *argv[]) {
     c[i] = 2.0*0.001*i;
   }
   // run primal and print its output.
+  double start_time = omp_get_wtime();
   wave1d(&u[0], &u_1[0], &u_2[0], &c[0], D, N);
+  double time = omp_get_wtime() - start_time;
+  printf("Forward: %f\n", time);
   //for(i=0; i<N; i++) {
   //  printf("%f ",u[i]);
   //}
@@ -48,19 +51,29 @@ int main(int argc, char *argv[]) {
     u_b[i] = 2.0*0.001*i;
   }
   // call Tapenade adjoint
-  double start_time = omp_get_wtime();
+  start_time = omp_get_wtime();
   wave1d_b(&u[0], &u_b[0], &u_1[0], &u_1_b_Tapenade[0], &u_2[0], &u_2_b_Tapenade[0], &c[0], D, N);
-  double time = omp_get_wtime() - start_time;
-  printf("Tapenade: %f", time);
+  time = omp_get_wtime() - start_time;
+  printf("Tapenade: %f\n", time);
   // call PerforAD adjoint
   start_time = omp_get_wtime();
   wave1d_perf_b(&u[0], &u_b[0], &c[0], &u_1[0], &u_1_b_PerforAD[0], &u_2[0], &u_2_b_PerforAD[0], D, N);
   time = omp_get_wtime() - start_time;
-  printf("PerforAD: %f", time);
+  printf("PerforAD: %f\n", time);
   // print results side by side
   //for(i=0; i<N; i++) {
   //  printf("[%f, %f] [%f, %f]\n",u_1_b_Tapenade[i],u_1_b_PerforAD[i],u_2_b_Tapenade[i],u_2_b_PerforAD[i]);
   //}
   //printf("\n");
+  free(u);
+  free(u_b);
+  free(c);
+  free(u_1);
+  free(u_1_b_Tapenade);
+  free(u_2);
+  free(u_2_b_Tapenade);
+  free(u_1_b_PerforAD);
+  free(u_2_b_PerforAD);
+
   return 0;
 }

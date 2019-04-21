@@ -11,8 +11,16 @@
    Plus diff mem management of: u:in *u:in **u:in u_1:in *u_1:in
                 **u_1:in u_2:in *u_2:in **u_2:in
 */
-void wave3d_b(double ***u, double ***ub, double ***u_1, double ***u_1b, double
-        ***u_2, double ***u_2b, double ***c, double D, int n) {
+void wave3d_b(double *u_vec, double *ub_vec, double *u_1_vec, double *u_1b_vec, double
+	      *u_2_vec, double *u_2b_vec, double *c_vec, double D, int n) {
+double (*u)[n][n] = (double (*)[n][n]) u_vec;
+double (*c)[n][n] = (double (*)[n][n]) c_vec;
+double (*u_1)[n][n] = (double (*)[n][n]) u_1_vec;
+double (*u_2)[n][n] = (double (*)[n][n]) u_2_vec;
+
+double (*ub)[n][n] = (double (*)[n][n]) ub_vec;
+double (*u_1b)[n][n] = (double (*)[n][n]) u_1b_vec;
+double (*u_2b)[n][n] = (double (*)[n][n]) u_2b_vec;
     int i;
     int j;
     int k;

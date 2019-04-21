@@ -7,13 +7,22 @@
 #define Heaviside(x) ((x>=0)?1.0:0.0)
 
 #define u(x,xx,xxx) u[x][xx][xxx]
-#define u_b(x,xx,xxx) u_b[x][xx][xxx]
+#define u_b(x,xx,xxx) ub[x][xx][xxx]
 #define c(x,xx,xxx) c[x][xx][xxx]
 #define u_1(x,xx,xxx) u_1[x][xx][xxx]
-#define u_1_b(x,xx,xxx) u_1_b[x][xx][xxx]
+#define u_1_b(x,xx,xxx) u_1b[x][xx][xxx]
 #define u_2(x,xx,xxx) u_2[x][xx][xxx]
-#define u_2_b(x,xx,xxx) u_2_b[x][xx][xxx]
-void wave3d_perf_b(double*** u, double*** u_b, double*** c, double*** u_1, double*** u_1_b, double*** u_2, double*** u_2_b, double D, int n) {
+#define u_2_b(x,xx,xxx) u_2b[x][xx][xxx]
+void wave3d_perf_b(double *u_vec, double *ub_vec, double *u_1_vec, double *u_1b_vec, double
+	      *u_2_vec, double *u_2b_vec, double *c_vec, double D, int n) {
+double (*u)[n][n] = (double (*)[n][n]) u_vec;
+double (*c)[n][n] = (double (*)[n][n]) c_vec;
+double (*u_1)[n][n] = (double (*)[n][n]) u_1_vec;
+double (*u_2)[n][n] = (double (*)[n][n]) u_2_vec;
+
+double (*ub)[n][n] = (double (*)[n][n]) ub_vec;
+double (*u_1b)[n][n] = (double (*)[n][n]) u_1b_vec;
+double (*u_2b)[n][n] = (double (*)[n][n]) u_2b_vec;
     int i;
     int j;
     int k;
