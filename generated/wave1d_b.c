@@ -14,10 +14,14 @@ void wave1d_b(double *u, double *ub, double *u_1, double *u_1b, double *u_2,
         double *u_2b, double *c, double D, int n) {
     int i;
     double tempb;
+#pragma omp parallel for private(tempb)
     for (i = n-2; i > 0; --i) {
         tempb = D*c[i]*ub[i];
+	#pragma omp atomic
         u_1b[i - 1] = u_1b[i - 1] + tempb;
+	#pragma omp atomic
         u_1b[i] = u_1b[i] + 2.0*ub[i] - 2*tempb;
+	#pragma omp atomic
         u_1b[i + 1] = u_1b[i + 1] + tempb;
         u_2b[i] = u_2b[i] - ub[i];
     }
