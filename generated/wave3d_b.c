@@ -30,15 +30,15 @@ double (*u_2b)[n][n] = (double (*)[n][n]) u_2b_vec;
         for (j = n-2; j > 0; --j)
             for (k = n-2; k > 0; --k) {
                 tempb = D*c[i][j][k]*ub[i][j][k];
-		//#pragma omp atomic
+		#pragma omp atomic
                 u_1b[i][j][k - 1] = u_1b[i][j][k - 1] + tempb;
-		//#pragma omp atomic
+		#pragma omp atomic
                 u_1b[i][j][k] = u_1b[i][j][k] + 2.0*ub[i][j][k] - 6*tempb;
-		//#pragma omp atomic
+		#pragma omp atomic
                 u_1b[i][j][k + 1] = u_1b[i][j][k + 1] + tempb;
-		//#pragma omp atomic
+		#pragma omp atomic
                 u_1b[i][j - 1][k] = u_1b[i][j - 1][k] + tempb;
-		//#pragma omp atomic
+		#pragma omp atomic
                 u_1b[i][j + 1][k] = u_1b[i][j + 1][k] + tempb;
 		#pragma omp atomic
                 u_1b[i - 1][j][k] = u_1b[i - 1][j][k] + tempb;

@@ -72,7 +72,7 @@ void burgers1d_b(double *u, double *ub, double *u_1, double *u_1b, double D,
 	tempb = 0;
         fmax_b(0, u_1[i], &(tempb), result2b);
 	#pragma omp atomic
-	u_1b[i] += tempb
+	u_1b[i] += tempb;
 	tempb = 0;
         fmin_b(0, u_1[i], &(tempb), result1b);
 	#pragma omp atomic
