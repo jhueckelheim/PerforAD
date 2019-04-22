@@ -12,6 +12,7 @@ $input double 	global_u_b[N][N][N];
 $output	double 	global_u_1_b[N][N][N];
 $output double  global_u_2_b[N][N][N];
 $assume(6<=N && N<=10);
+$assume(N==5);
 #endif
 
 
@@ -36,7 +37,7 @@ void free3Ddouble(double ***p, int d1, int d2, int d3){
     }
     free(p[i]);
   }
-  free(p[i]);
+  free(p);
 }
 /*
 double ***allocate3Ddouble(int d1, int d2, int d3)
@@ -81,6 +82,10 @@ int main()
         u_1[i][j][k] = global_u_1[i][j][k];
         u_2[i][j][k] = global_u_2[i][j][k];
         u_b[i][j][k] = global_u_b[i][j][k];
+        $assume(u[i][j][j]!=0.0);
+        $assume(c[i][j][j]!=0.0);
+        $assume(u_1[i][j][j]!=0.0);
+        $assume(u_2[i][j][j]!=0.0);
       }
     }
   }
