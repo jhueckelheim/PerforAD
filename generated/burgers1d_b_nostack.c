@@ -55,15 +55,10 @@ void burgers1d_b(double *u, double *ub, double *u_1, double *u_1b, double D,
     double result2b;
     double tempb;
     double tempb0;
-    //#pragma omp parallel for private(i)
-    for (i = 1; i < n-1; ++i) {
-        pushReal8(result1);
-        result1 = fmin_nodiff(0, u_1[i]);
-        pushReal8(result2);
-        result2 = fmax_nodiff(0, u_1[i]);
-    }
-#pragma omp parallel for private(i, tempb, tempb0, result1b, result2b)
+#pragma omp parallel for private(i, result1, result2, tempb, tempb0, result1b, result2b)
     for (i = n-2; i > 0; --i) {
+        result1 = fmin_nodiff(0, u_1[i]);
+        result2 = fmax_nodiff(0, u_1[i]);
         tempb = -(C*ub[i]);
         tempb0 = D*ub[i];
 	#pragma omp atomic
@@ -74,12 +69,12 @@ void burgers1d_b(double *u, double *ub, double *u_1, double *u_1b, double D,
 	#pragma omp atomic
         u_1b[i - 1] = u_1b[i - 1] + tempb0 - result2*tempb;
         result2b = (u_1[i]-u_1[i-1])*tempb;
-        popReal8(&result2);
+	tempb = 0;
         fmax_b(0, u_1[i], &(tempb), result2b);
 	#pragma omp atomic
 	u_1b[i] += tempb;
-        popReal8(&result1);
-	fmin_b(0, u_1[i], &(tempb), result1b);
+	tempb = 0;
+        fmin_b(0, u_1[i], &(tempb), result1b);
 	#pragma omp atomic
 	u_1b[i] += tempb;
     }

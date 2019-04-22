@@ -1,681 +1,705 @@
-static char adBid[]="$Id: adBuffer.c $";
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "adStack.h"
+#include "adBuffer.h"
 
-/************ MEASUREMENT OF PUSH/POP TRAFFIC *************/
+/************ MEASUREMENT OF PUSH TRAFFIC *************/
 
-static int mmftraffic = 0 ;
-static int mmftrafficM = 0 ;
+static long int bufferTraffic = 0 ;
 
-void addftraffic(int n) {
-  mmftraffic = mmftraffic+n ;
-  while (mmftraffic >= 1000000) {
-    mmftraffic = mmftraffic-1000000 ;
-    ++mmftrafficM ;
-  }
-  while (mmftraffic < 0) {
-    mmftraffic = mmftraffic+1000000 ;
-    --mmftraffic ;
-  }
+void addBufferTraffic(int n) {
+  bufferTraffic += n ;
 }
 
-void printtraffic() {
-  printctraffic_() ;
-  printf(" F Traffic: ") ;
-  printbigbytes(mmftrafficM, 1000000, mmftraffic) ;
-  printf(" bytes\n") ;
+void adStack_showTraffic() {
+  showTotalTraffic(bufferTraffic) ;
 }
 
 /************************** integer*4 ************************/
-static int adi4buf[512] ;
+/* The buffer array for I4. Suggested size 512 */
+#define I4BUFSIZE 512
+static int adi4buf[I4BUFSIZE] ;
 static int adi4ibuf = 0 ;
-static int adi4lbuf[512] ;
-static int adi4ilbuf = -1 ;
-static int adi4inlbuf = 0 ; /*=FALSE*/
 
-void pushinteger4(int x) {
-  addftraffic(4) ;
-  if (adi4ilbuf != -1) {
-    adi4ilbuf = -1 ;
-    adi4inlbuf = 0 ; /*=FALSE*/
-  }
-  if (adi4ibuf >= 511) {
-    adi4buf[511] = x ;
-    pushNarray((void *)adi4buf, 512*4) ;
-    addftraffic(-512*4) ;
+void pushInteger4(int x) {
+  addBufferTraffic(4) ;
+  adi4buf[adi4ibuf] = x ;
+  if (adi4ibuf>=I4BUFSIZE-1) {
+    pushNArray((char *)adi4buf, I4BUFSIZE*4, 1) ;
+    addBufferTraffic(-I4BUFSIZE*4) ;
     adi4ibuf = 0 ;
-  } else {
-    adi4buf[adi4ibuf] = x ;
+  } else
     ++adi4ibuf ;
-  }
 }
 
-void lookinteger4(int *x) {
-  if (adi4ilbuf == -1) {
-    adi4ilbuf = adi4ibuf ;
-    resetadlookstack_() ;
-  }
-  if (adi4ilbuf <= 0) {
-    lookNarray((void *)adi4lbuf, 512*4) ;
-    adi4inlbuf = 1 ; /*=TRUE*/
-    adi4ilbuf = 511 ;
-    *x = adi4lbuf[511] ;
-  } else {
-    --adi4ilbuf ;
-    if (adi4inlbuf)
-      *x = adi4lbuf[adi4ilbuf] ;
-    else
-      *x = adi4buf[adi4ilbuf] ;
-  }
-}
-
-void popinteger4(int *x) {
-  if (adi4ilbuf != -1) {
-    adi4ilbuf = -1 ;
-    adi4inlbuf = 0 ; /*=FALSE*/
-  }
-  if (adi4ibuf <= 0) {
-    popNarray((void *)adi4buf, 512*4) ;
-    adi4ibuf = 511 ;
-    *x = adi4buf[511] ;
-  } else {
+void popInteger4(int *x) {
+  if (adi4ibuf<=0) {
+    popNArray((char *)adi4buf, I4BUFSIZE*4, 1) ;
+    adi4ibuf = I4BUFSIZE-1 ;
+  } else
     --adi4ibuf ;
-    *x = adi4buf[adi4ibuf] ;
-  }
+  *x = adi4buf[adi4ibuf] ;
 }
 
-/*************************** bits *************************/
-static unsigned int adbitbuf = 0 ;
-static int adbitibuf = 1 ;
-static unsigned int adbitlbuf = 0 ;
-static int adbitilbuf = -1 ;
-static int adbitinlbuf = 0 ; /*=FALSE*/
+/************************** integer*8 ************************/
+/* The buffer array for I8. Suggested size 512 */
+#define I8BUFSIZE 512
+static long adi8buf[I8BUFSIZE] ;
+static int adi8ibuf = 0 ;
 
-void pushbit(int bit) {
-  if (adbitilbuf != -1) {
-    adbitilbuf = -1 ;
-    adbitinlbuf = 0 ; /*=FALSE*/
-  }
-  adbitbuf<<=1 ;
-  if (bit) adbitbuf++ ;
-  if (adbitibuf>=32) {
-    pushinteger4(adbitbuf) ;
-    adbitbuf = 0 ;
-    adbitibuf = 1 ;
+void pushInteger8(long x) {
+  addBufferTraffic(8) ;
+  adi8buf[adi8ibuf] = x ;
+  if (adi8ibuf>=I8BUFSIZE-1) {
+    pushNArray((char *)adi8buf, I8BUFSIZE*8, 1) ;
+    addBufferTraffic(-I8BUFSIZE*8) ;
+    adi8ibuf = 0 ;
   } else
-    adbitibuf++ ;
+    ++adi8ibuf ;
 }
 
-int lookbit() {
-  int bit ;
-  if (adbitilbuf==-1) {
-    adbitilbuf=adbitibuf ;
-    resetadlookstack_() ;
-    adbitlbuf = adbitbuf ;
-    adbitinlbuf = 1 ; /*=TRUE*/
-  }
-  if (adbitilbuf<=1) {
-    lookinteger4((int*)&adbitlbuf) ;
-    adbitilbuf = 32 ;
+void popInteger8(long *x) {
+  if (adi8ibuf<=0) {
+    popNArray((char *)adi8buf, I8BUFSIZE*8, 1) ;
+    adi8ibuf = I8BUFSIZE-1 ;
   } else
-    adbitilbuf-- ;
-  bit = adbitlbuf%2 ;
-  adbitlbuf>>=1 ;
-  return bit ;
-}
-
-int popbit() {
-  int bit ;
-  if (adbitilbuf != -1) {
-    adbitilbuf = -1 ;
-    adbitinlbuf = 0 ; /*=FALSE*/
-  }
-  if (adbitibuf<=1) {
-    popinteger4((int*)&adbitbuf) ;
-    adbitibuf = 32 ;
-  } else
-    adbitibuf-- ;
-  bit = adbitbuf%2 ;
-  adbitbuf>>=1 ;
-  return bit ;
-}
-
-/************************* controls ***********************/
-
-void pushcontrol1b(int cc) {
-  pushbit(cc) ;
-}
-
-void popcontrol1b(int *cc) {
-  *cc = (popbit()?1:0) ;
-}
-
-void lookcontrol1b(int *cc) {
-  *cc = (lookbit()?1:0) ;
-}
-
-void pushcontrol2b(int cc) {
-  pushbit(cc%2) ;
-  cc >>= 1 ;
-  pushbit(cc) ;
-}
-
-void popcontrol2b(int *cc) {
-  *cc = (popbit()?2:0) ;
-  if (popbit()) (*cc)++ ;
-}
-
-void lookcontrol2b(int *cc) {
-  *cc = (lookbit()?2:0) ;
-  if (lookbit()) (*cc)++ ;
-}
-
-void pushcontrol3b(int cc) {
-  pushbit(cc%2) ;
-  cc >>= 1 ;
-  pushbit(cc%2) ;
-  cc >>= 1 ;
-  pushbit(cc) ;
-}
-
-void popcontrol3b(int *cc) {
-  *cc = (popbit()?2:0) ;
-  if (popbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (popbit()) (*cc)++ ;
-}
-
-void lookcontrol3b(int *cc) {
-  *cc = (lookbit()?2:0) ;
-  if (lookbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (lookbit()) (*cc)++ ;
-}
-
-void pushcontrol4b(int cc) {
-  pushbit(cc%2) ;
-  cc >>= 1 ;
-  pushbit(cc%2) ;
-  cc >>= 1 ;
-  pushbit(cc%2) ;
-  cc >>= 1 ;
-  pushbit(cc) ;
-}
-
-void popcontrol4b(int *cc) {
-  *cc = (popbit()?2:0) ;
-  if (popbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (popbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (popbit()) (*cc)++ ;
-}
-
-void lookcontrol4b(int *cc) {
-  *cc = (lookbit()?2:0) ;
-  if (lookbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (lookbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (lookbit()) (*cc)++ ;
-}
-
-void pushcontrol5b(int cc) {
-  pushbit(cc%2) ;
-  cc >>= 1 ;
-  pushbit(cc%2) ;
-  cc >>= 1 ;
-  pushbit(cc%2) ;
-  cc >>= 1 ;
-  pushbit(cc%2) ;
-  cc >>= 1 ;
-  pushbit(cc) ;
-}
-
-void popcontrol5b(int *cc) {
-  *cc = (popbit()?2:0) ;
-  if (popbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (popbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (popbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (popbit()) (*cc)++ ;
-}
-
-void lookcontrol5b(int *cc) {
-  *cc = (lookbit()?2:0) ;
-  if (lookbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (lookbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (lookbit()) (*cc)++ ;
-  (*cc) <<= 1 ;
-  if (lookbit()) (*cc)++ ;
+    --adi8ibuf ;
+  *x = adi8buf[adi8ibuf] ;
 }
 
 /************************** real*4 ************************/
-static float adr4buf[512] ;
+// The buffer array for R4. Suggested size 512
+#define R4BUFSIZE 512
+static float adr4buf[R4BUFSIZE] ;
 static int adr4ibuf = 0 ;
-static float adr4lbuf[512] ;
-static int adr4ilbuf = -1 ;
-static int adr4inlbuf = 0 ;
 
-void pushreal4(float x) {
-  addftraffic(4) ;
-  if (adr4ilbuf != -1) {
-    adr4ilbuf = -1 ;
-    adr4inlbuf = 0 ;
-  }
-  if (adr4ibuf >= 511) {
-    adr4buf[511] = x ;
-    pushNarray((void *)adr4buf, 512*4) ;
-    addftraffic(-512*4) ;
+void pushReal4(float x) {
+  addBufferTraffic(4) ;
+  adr4buf[adr4ibuf] = x ;
+  if (adr4ibuf>=R4BUFSIZE-1) {
+    pushNArray((char *)adr4buf, R4BUFSIZE*4, 1) ;
+    addBufferTraffic(-R4BUFSIZE*4) ;
     adr4ibuf = 0 ;
-  } else {
-    adr4buf[adr4ibuf] = x ;
+  } else
     ++adr4ibuf ;
-  }
 }
 
-void lookreal4(float *x) {
-  if (adr4ilbuf == -1) {
-    adr4ilbuf = adr4ibuf ;
-    resetadlookstack_() ;
-  }
-  if (adr4ilbuf <= 0) {
-    lookNarray((void *)adr4lbuf, 512*4) ;
-    adr4inlbuf = 1 ;
-    adr4ilbuf = 511 ;
-    *x = adr4lbuf[511] ;
-  } else {
-    --adr4ilbuf ;
-    if (adr4inlbuf)
-      *x = adr4lbuf[adr4ilbuf] ;
-    else
-      *x = adr4buf[adr4ilbuf] ;
-  }
-}
-
-void popreal4(float *x) {
-  if (adr4ilbuf != -1) {
-    adr4ilbuf = -1 ;
-    adr4inlbuf = 0 ;
-  }
-  if (adr4ibuf <= 0) {
-    popNarray((void *)adr4buf, 512*4) ;
-    adr4ibuf = 511 ;
-    *x = adr4buf[511] ;
-  } else {
+void popReal4(float *x) {
+  if (adr4ibuf<=0) {
+    popNArray((char *)adr4buf, R4BUFSIZE*4, 1) ;
+    adr4ibuf = R4BUFSIZE-1 ;
+  } else
     --adr4ibuf ;
-    *x = adr4buf[adr4ibuf] ;
-  }
+  *x = adr4buf[adr4ibuf] ;
 }
 
 /************************** real*8 ************************/
-static double adr8buf[512] ;
+// The buffer array for r8. Suggested size 512
+#define R8BUFSIZE 512
+static double adr8buf[R8BUFSIZE] ;
 static int adr8ibuf = 0 ;
-static double adr8lbuf[512] ;
-static int adr8ilbuf = -1 ;
-static int adr8inlbuf = 0 ;
 
-void pushreal8(double x) {
-  addftraffic(8) ;
-  if (adr8ilbuf != -1) {
-    adr8ilbuf = -1 ;
-    adr8inlbuf = 0 ;
-  }
-  if (adr8ibuf >= 511) {
-    adr8buf[511] = x ;
-    pushNarray((void *)adr8buf, 512*8) ;
-    addftraffic(-4096) ;
+void pushReal8(double x) {
+  addBufferTraffic(8) ;
+  adr8buf[adr8ibuf] = x ;
+  if (adr8ibuf>=R8BUFSIZE-1) {
+    pushNArray((char *)adr8buf, R8BUFSIZE*8, 1) ;
+    addBufferTraffic(-R8BUFSIZE*8) ;
     adr8ibuf = 0 ;
-  } else {
-    adr8buf[adr8ibuf] = x ;
+  } else
     ++adr8ibuf ;
-  }
 }
 
-void lookreal8(double *x) {
-  if (adr8ilbuf == -1) {
-    adr8ilbuf = adr8ibuf ;
-    resetadlookstack_() ;
-  }
-  if (adr8ilbuf <= 0) {
-    lookNarray((void *)adr8lbuf, 512*8) ;
-    adr8inlbuf = 1 ;
-    adr8ilbuf = 511 ;
-    *x = adr8lbuf[511] ;
-  } else {
-    --adr8ilbuf ;
-    if (adr8inlbuf)
-      *x = adr8lbuf[adr8ilbuf] ;
-    else
-      *x = adr8buf[adr8ilbuf] ;
-  }
-}
-
-void popreal8(double *x) {
-  if (adr8ilbuf != -1) {
-    adr8ilbuf = -1 ;
-    adr8inlbuf = 0 ;
-  }
-  if (adr8ibuf <= 0) {
-    popNarray((void *)adr8buf, 512*8) ;
-    adr8ibuf = 511 ;
-    *x = adr8buf[511] ;
-  } else {
+void popReal8(double *x) {
+  if (adr8ibuf<=0) {
+    popNArray((char *)adr8buf, R8BUFSIZE*8, 1) ;
+    adr8ibuf = R8BUFSIZE-1 ;
+  } else
     --adr8ibuf ;
-    *x = adr8buf[adr8ibuf] ;
-  }
+  *x = adr8buf[adr8ibuf] ;
+}
+
+/************************** complex*8 ************************/
+// The buffer array for C8. Suggested size 512
+#define C8BUFSIZE 512
+static ccmplx adc8buf[C8BUFSIZE] ;
+static int adc8ibuf = 0 ;
+
+void pushComplex8(ccmplx x) {
+  addBufferTraffic(8) ;
+  adc8buf[adc8ibuf] = x ;
+  if (adc8ibuf>=C8BUFSIZE-1) {
+    pushNArray((char *)adc8buf, C8BUFSIZE*8, 1) ;
+    addBufferTraffic(-C8BUFSIZE*8) ;
+    adc8ibuf = 0 ;
+  } else
+  ++adc8ibuf ;
+}
+
+void popComplex8(ccmplx *x) {
+  if (adc8ibuf<=0) {
+    popNArray((char *)adc8buf, C8BUFSIZE*8, 1) ;
+    adc8ibuf = C8BUFSIZE-1 ;
+  } else
+    --adc8ibuf ;
+  *x = adc8buf[adc8ibuf] ;
+}
+
+/************************** complex*16 ************************/
+// The buffer array for C16. Suggested size 512
+#define C16BUFSIZE 512
+static cdcmplx adc16buf[C16BUFSIZE] ;
+static int adc16ibuf = 0 ;
+
+void pushComplex16(cdcmplx x) {
+  addBufferTraffic(16) ;
+  adc16buf[adc16ibuf] = x ;
+  if (adc16ibuf>=C16BUFSIZE-1) {
+    pushNArray((char *)adc16buf, C16BUFSIZE*16, 1) ;
+    addBufferTraffic(-C16BUFSIZE*16) ;
+    adc16ibuf = 0 ;
+  } else
+    ++adc16ibuf ;
+}
+
+void popComplex16(cdcmplx *x) {
+  if (adc16ibuf<=0) {
+    popNArray((char *)adc16buf, C16BUFSIZE*16, 1) ;
+    adc16ibuf = C16BUFSIZE-1 ;
+  } else
+    --adc16ibuf ;
+  *x = adc16buf[adc16ibuf] ;
 }
 
 /************************** character ************************/
-static char ads1buf[512] ;
+// The buffer array for characters. Suggested size 512
+#define CHARBUFSIZE 512
+static char ads1buf[CHARBUFSIZE] ;
 static int ads1ibuf = 0 ;
-static char ads1lbuf[512] ;
-static int ads1ilbuf = -1 ;
-static int ads1inlbuf = 0 ;
 
-void pushcharacter(char x) {
-  addftraffic(1) ;
-  if (ads1ilbuf != -1) {
-    ads1ilbuf = -1 ;
-    ads1inlbuf = 0 ;
-  }
-  if (ads1ibuf >= 511) {
-    ads1buf[511] = x ;
-    pushNarray((void *)ads1buf, 512) ;
-    addftraffic(-512) ;
+void pushCharacter(char x) {
+  addBufferTraffic(1) ;
+  ads1buf[ads1ibuf] = x ;
+  if (ads1ibuf>=CHARBUFSIZE-1) {
+    pushNArray((char *)ads1buf, CHARBUFSIZE, 1) ;
+    addBufferTraffic(-CHARBUFSIZE) ;
     ads1ibuf = 0 ;
-  } else {
-    ads1buf[ads1ibuf] = x ;
+  } else
     ++ads1ibuf ;
-  }
 }
 
-void lookcharacter(char *x) {
-  if (ads1ilbuf == -1) {
-    ads1ilbuf = ads1ibuf ;
-    resetadlookstack_() ;
-  }
-  if (ads1ilbuf <= 0) {
-    lookNarray((void *)ads1lbuf, 512) ;
-    ads1inlbuf = 1 ;
-    ads1ilbuf = 511 ;
-    *x = ads1lbuf[511] ;
-  } else {
-    --ads1ilbuf ;
-    if (ads1inlbuf)
-      *x = ads1lbuf[ads1ilbuf] ;
-    else
-      *x = ads1buf[ads1ilbuf] ;
-  }
-}
-
-void popcharacter(char *x) {
-  if (ads1ilbuf != -1) {
-    ads1ilbuf = -1 ;
-    ads1inlbuf = 0 ;
-  }
-  if (ads1ibuf <= 0) {
-    popNarray((void *)ads1buf, 512) ;
-    ads1ibuf = 511 ;
-    *x = ads1buf[511] ;
-  } else {
+void popCharacter(char *x) {
+  if (ads1ibuf<=0) {
+    popNArray((char *)ads1buf, CHARBUFSIZE, 1) ;
+    ads1ibuf = CHARBUFSIZE-1 ;
+  } else
     --ads1ibuf ;
-    *x = ads1buf[ads1ibuf] ;
-  }
+  *x = ads1buf[ads1ibuf] ;
 }
 
-/******************* POINTERS (old short 32 bits) ******************/
-static void *adp4buf[512] ;
-static int adp4ibuf = 0 ;
-static void *adp4lbuf[512] ;
-static int adp4ilbuf = -1 ;
-static int adp4inlbuf = 0 ;
+/******************* bit (hidden primitives) ***************/
+static unsigned int adbitbuf = 0 ;
+static int adbitibuf = 0 ;
 
-void pushpointer4(void *x) {
-  addftraffic(4) ;
-  if (adp4ilbuf != -1) {
-    adp4ilbuf = -1 ;
-    adp4inlbuf = 0 ;
-  }
-  if (adp4ibuf >= 511) {
-    adp4buf[511] = x ;
-    pushNarray((void *)adp4buf, 512*4) ;
-    addftraffic(-512*4) ;
-    adp4ibuf = 0 ;
-  } else {
-    adp4buf[adp4ibuf] = x ;
-    ++adp4ibuf ;
-  }
+void pushBit(int x) {
+  adbitbuf<<=1 ;
+  if (x) ++adbitbuf ;
+  if (adbitibuf>=31) {
+    pushNArray((char *)&adbitbuf, 4, 1) ;
+    adbitbuf = 0 ;
+    adbitibuf = 0 ;
+  } else
+    ++adbitibuf ;
 }
 
-void lookpointer4(void **x) {
-  if (adp4ilbuf == -1) {
-    adp4ilbuf = adp4ibuf ;
-    resetadlookstack_() ;
-  }
-  if (adp4ilbuf <= 0) {
-    lookNarray((void *)adp4lbuf, 512*4) ;
-    adp4inlbuf = 1 ;
-    adp4ilbuf = 511 ;
-    *x = adp4lbuf[511] ;
-  } else {
-    --adp4ilbuf ;
-    if (adp4inlbuf)
-      *x = adp4lbuf[adp4ilbuf] ;
-    else
-      *x = adp4buf[adp4ilbuf] ;
-  }
+int popBit() {
+  if (adbitibuf<=0) {
+    popNArray((char *)&adbitbuf, 4, 1) ;
+    adbitibuf = 31 ;
+  } else
+    --adbitibuf ;
+  int result = adbitbuf%2 ;
+  adbitbuf>>=1 ;
+  return result ;
 }
 
-void poppointer4(void **x) {
-  if (adp4ilbuf != -1) {
-    adp4ilbuf = -1 ;
-    adp4inlbuf = 0 ;
-  }
-  if (adp4ibuf <= 0) {
-    popNarray((void *)adp4buf, 512*4) ;
-    adp4ibuf = 511 ;
-    *x = adp4buf[511] ;
-  } else {
-    --adp4ibuf ;
-    *x = adp4buf[adp4ibuf] ;
-  }
+/*************************** boolean *************************/
+
+void pushBoolean(int x) {
+  pushBit(x) ;
 }
 
-/********************** POINTERS (new long 64 bits) *****************/
-static void *adp8buf[512] ;
-static int adp8ibuf = 0 ;
-static void *adp8lbuf[512] ;
-static int adp8ilbuf = -1 ;
-static int adp8inlbuf = 0 ;
-
-void pushpointer8(void *x) {
-  addftraffic(8) ;
-  if (adp8ilbuf != -1) {
-    adp8ilbuf = -1 ;
-    adp8inlbuf = 0 ;
-  }
-  if (adp8ibuf >= 511) {
-    adp8buf[511] = x ;
-    pushNarray((void *)adp8buf, 512*8) ;
-    addftraffic(-512*8) ;
-    adp8ibuf = 0 ;
-  } else {
-    adp8buf[adp8ibuf] = x ;
-    ++adp8ibuf ;
-  }
+void popBoolean(int *x) {
+  *x = popBit() ;
 }
 
-void lookpointer8(void **x) {
-  if (adp8ilbuf == -1) {
-    adp8ilbuf = adp8ibuf ;
-    resetadlookstack_() ;
-  }
-  if (adp8ilbuf <= 0) {
-    lookNarray((void *)adp8lbuf, 512*8) ;
-    adp8inlbuf = 1 ;
-    adp8ilbuf = 511 ;
-    *x = adp8lbuf[511] ;
-  } else {
-    --adp8ilbuf ;
-    if (adp8inlbuf)
-      *x = adp8lbuf[adp8ilbuf] ;
-    else
-      *x = adp8buf[adp8ilbuf] ;
-  }
+/************************* control ***********************/
+
+void pushControl1b(int cc) {
+  pushBit(cc) ;
 }
 
-void poppointer8(void **x) {
-  if (adp8ilbuf != -1) {
-    adp8ilbuf = -1 ;
-    adp8inlbuf = 0 ;
-  }
-  if (adp8ibuf <= 0) {
-    popNarray((void *)adp8buf, 512*8) ;
-    adp8ibuf = 511 ;
-    *x = adp8buf[511] ;
-  } else {
-    --adp8ibuf ;
-    *x = adp8buf[adp8ibuf] ;
-  }
+void popControl1b(int *cc) {
+  *cc = popBit() ;
 }
 
-/********* PRINTING THE SIZE OF STACKS AND BUFFERS ********/
-
-/** Very complete display of the current size in bytes of
- * the global C stack followed by the auxiliary stacks.
- * Also shows the "looking" stack position if relevant,
- * and -999 if not relevant. */
-void printallbuffers() {
-  int cblocks,csize,lookcblocks,lookcsize,lookbufsize ;
-  getbigcsizes_(&cblocks,&csize,&lookcblocks,&lookcsize) ;
-  printf("MAIN C stack size :%8iB +%5i bytes (looking:%8iB +%5i)\n",
-         cblocks,csize,lookcblocks,lookcsize) ;
-  lookbufsize = ((adi4inlbuf&&adi4ilbuf>=0)?adi4ilbuf*4:-999) ;
-  printf(" plus INTs4    :%4i bytes (looking:%4i)\n", adi4ibuf*4, lookbufsize) ;
-  lookbufsize = ((adr4inlbuf&&adr4ilbuf>=0)?adr4ilbuf*4:-999) ;
-  printf(" plus REALs4   :%4i bytes (looking:%4i)\n", adr4ibuf*4, lookbufsize) ;
-  lookbufsize = ((adr8inlbuf&&adr8ilbuf>=0)?adr8ilbuf*8:-999) ;
-  printf(" plus REALs8   :%4i bytes (looking:%4i)\n", adr8ibuf*8, lookbufsize) ;
-  lookbufsize = ((adp4inlbuf&&adp4ilbuf>=0)?adp4ilbuf*4:-999) ;
-  printf(" plus POINTERs4:%4i bytes (looking:%4i)\n", adp4ibuf*4, lookbufsize) ;
-  lookbufsize = ((adp8inlbuf&&adp8ilbuf>=0)?adp8ilbuf*8:-999) ;
-  printf(" plus POINTERs8:%4i bytes (looking:%4i)\n", adp8ibuf*8, lookbufsize) ;
+void pushControl2b(int cc) {
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc) ;
 }
 
-void printbuffertop() {
-  int size = 0 ;
-  size += adi4ibuf*4 ;
-  size += adr4ibuf*4 ;
-  size += adr8ibuf*8 ;
-  size += adp4ibuf*4 ;
-  size += adp8ibuf*8 ;
-  size += ads1ibuf ;
-  printf("Buffer size:%i bytes i.e. %f Kbytes\n",
-         size, ((float)size)/1024.0) ;
+void popControl2b(int *cc) {
+  *cc = (popBit()?2:0) ;
+  if (popBit()) (*cc)++ ;
 }
 
-void showallstacks() {
-  int i ;
-  printf("BIT STACK      : %x == %i\n",adbitbuf,adbitbuf) ; 
-  printf("INTEGER*4 BUFFER[%i]:",adi4ibuf) ;
-  for (i=0 ; i<adi4ibuf ; ++i) printf(" %i",adi4buf[i]) ;
-  printf("\n") ;
-  printf("REAL*8 BUFFER[%i]:",adr8ibuf) ;
-  for (i=0 ; i<adr8ibuf ; ++i) printf(" %d",adr8buf[i]) ;
-  printf("\n") ;
-  printf("REAL*4 BUFFER[%i]:",adr4ibuf) ;
-  for (i=0 ; i<adr4ibuf ; ++i) printf(" %f",adr4buf[i]) ;
-  printf("\n") ;
-  printf("POINTER*8 BUFFER[%i]:",adp8ibuf) ;
-  for (i=0 ; i<adp8ibuf ; ++i) printf(" %x",adp8buf[i]) ;
-  printf("\n") ;
-  showrecentcstack_() ;
+void pushControl3b(int cc) {
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc) ;
+}
+
+void popControl3b(int *cc) {
+  *cc = (popBit()?2:0) ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+}
+
+void pushControl4b(int cc) {
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc) ;
+}
+
+void popControl4b(int *cc) {
+  *cc = (popBit()?2:0) ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+}
+
+void pushControl5b(int cc) {
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc) ;
+}
+
+void popControl5b(int *cc) {
+  *cc = (popBit()?2:0) ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+}
+
+void pushControl6b(int cc) {
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc) ;
+}
+
+void popControl6b(int *cc) {
+  *cc = (popBit()?2:0) ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+}
+
+void pushControl7b(int cc) {
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc) ;
+}
+
+void popControl7b(int *cc) {
+  *cc = (popBit()?2:0) ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+}
+
+void pushControl8b(int cc) {
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc%2) ;
+  cc>>=1 ;
+  pushBit(cc) ;
+}
+
+void popControl8b(int *cc) {
+  *cc = (popBit()?2:0) ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+  (*cc) <<= 1 ;
+  if (popBit()) (*cc)++ ;
+}
+
+/************************* pointer ************************/
+// The buffer array for pointers. Suggested size PTRBUFSIZE 512
+// Depending on the system, these use 4 or 8 bytes,
+// but they are all 4 or all 8, never a mixture of both.
+#define PTRBUFSIZE 512
+static void * adptrbuf[PTRBUFSIZE] ;
+static int adptribuf = 0 ;
+
+void pushPointer4(void *x) {
+  addBufferTraffic(4) ;
+  adptrbuf[adptribuf] = x ;
+  if (adptribuf>=PTRBUFSIZE-1) {
+    pushNArray((char *)adptrbuf, PTRBUFSIZE*4, 1) ;
+    addBufferTraffic(-PTRBUFSIZE*4) ;
+    adptribuf = 0 ;
+  } else
+    ++adptribuf ;
+}
+
+void popPointer4(void **x) {
+  if (adptribuf<=0) {
+    popNArray((char *)adptrbuf, PTRBUFSIZE*4, 1) ;
+    adptribuf = PTRBUFSIZE-1 ;
+  } else
+    --adptribuf ;
+  *x = adptrbuf[adptribuf] ;
+}
+
+void pushPointer8(void *x) {
+  addBufferTraffic(8) ;
+  adptrbuf[adptribuf] = x ;
+  if (adptribuf>=PTRBUFSIZE-1) {
+    pushNArray((char *)adptrbuf, PTRBUFSIZE*8, 1) ;
+    addBufferTraffic(-PTRBUFSIZE*8) ;
+    adptribuf = 0 ;
+  } else
+    ++adptribuf ;
+}
+
+void popPointer8(void **x) {
+  if (adptribuf<=0) {
+    popNArray((char *)adptrbuf, PTRBUFSIZE*8, 1) ;
+    adptribuf = PTRBUFSIZE-1 ;
+  } else
+    --adptribuf ;
+  *x = adptrbuf[adptribuf] ;
 }
 
 /**********************************************************
- *        HOW TO CREATE PUSH* LOOK* POP* SUBROUTINES
- *              YET FOR OTHER DATA TYPES
+ *        HOW TO CREATE PUSH* POP* SUBROUTINES
+ *             YET FOR OTHER DATA TYPES
  * Duplicate and uncomment the commented code below.
  * In the duplicated and uncommented code, replace:
  *   ctct -> C type name (e.g. float double, int...)
- *   TTTT -> BASIC TAPENADE TYPE NAME
+ *   tttt -> BASIC TAPENADE TYPE NAME
  *     (in character, boolean, integer, real, complex, pointer,...)
- *   z7   -> LETTER-SIZE FOR TYPE
- *     (in s,         b,       i,       r,    c,       p,      ...)
+ *   z7   -> LETTERSIZE FOR TYPE
+ *     (LETTER in s, b, i, r, c, p, ...) (SIZE is type size in bytes)
  *   7    -> TYPE SIZE IN BYTES
- * Don't forget to insert the corresponding lines in
- * procedure printbuffertop(), otherwise the contribution of
- * this new type to buffer occupation will not be seen.
- * (not very important anyway...)
  **********************************************************/
 
-/************************** TTTT*7 ************************/
+/************************** tttt*7 ************************/
 /*
-static ctct adz7buf[512] ;
-static int adz7ibuf = 0 ;
-static ctct adz7lbuf[512] ;
-static int adz7ilbuf = -1 ;
-static int adz7inlbuf = 0 ;
+// The buffer array for Z7. Suggested size 512
+#define Z7BUFSIZE 512
+static ctct adz7buf[Z7BUFSIZE] ;
+static ctct adz7ibuf = 0 ;
 
-void pushTTTT7(ctct x) {
-  addftraffic(7) ;
-  if (adz7ilbuf != -1) {
-    adz7ilbuf = -1 ;
-    adz7inlbuf = 0 ;
-  }
-  if (adz7ibuf >= 511) {
-    adz7buf[511] = x ;
-    pushNarray((void *)adz7buf, 512*7) ;
-    addftraffic(-512*7) ;
+void pushTttt7(ctct x) {
+  addBufferTraffic(7) ;
+  adz7buf[adz7ibuf] = x ;
+  if (adz7ibuf>=Z7BUFSIZE-1) {
+    pushNArray((char *)adz7buf, Z7BUFSIZE*7, 1) ;
+    addBufferTraffic(-Z7BUFSIZE*7) ;
     adz7ibuf = 0 ;
-  } else {
-    adz7buf[adz7ibuf] = x ;
+  } else
     ++adz7ibuf ;
-  }
 }
 
-void lookTTTT7(ctct *x) {
-  if (adz7ilbuf == -1) {
-    adz7ilbuf = adz7ibuf ;
-    resetadlookstack_() ;
-  }
-  if (adz7ilbuf <= 0) {
-    lookNarray((void *)adz7lbuf, 512*7) ;
-    adz7inlbuf = 1 ;
-    adz7ilbuf = 511 ;
-    *x = adz7lbuf[511] ;
-  } else {
-    --adz7ilbuf ;
-    if (adz7inlbuf)
-      *x = adz7lbuf[adz7ilbuf] ;
-    else
-      *x = adz7buf[adz7ilbuf] ;
-  }
-}
-
-void popTTTT7(ctct *x) {
-  if (adz7ilbuf != -1) {
-    adz7ilbuf = -1 ;
-    adz7inlbuf = 0 ;
-  }
+void popTttt7(ctct *x) {
   if (adz7ibuf <= 0) {
-    popNarray((void *)adz7buf, 512*7) ;
-    adz7ibuf = 511 ;
-    *x = adz7buf[511] ;
-  } else {
+    popNArray((char *)adz7buf, Z7BUFSIZE*7, 1) ;
+    adz7ibuf = Z7BUFSIZE-1 ;
+  } else
     --adz7ibuf ;
-    *x = adz7buf[adz7ibuf] ;
-  }
+  *x = adz7buf[adz7ibuf] ;
+}
+
+void pushTttt7Array(ctct *x, int n) {
+  pushNArray((char *)x,(unsigned int)(n*7), 1) ;
+}
+
+void popTttt7Array(ctct *x, int n) {
+  popNArray((char *)x,(unsigned int)(n*7), 1) ;
 }
 */
 
-/**********************************************************/
+/*************** REPEATED ACCESS MECHANISM *********************/
+
+typedef struct _BufferRepeatCell {
+  int indexi4 ;
+  int indexi8 ;
+  int indexr4 ;
+  int indexr8 ;
+  int indexc8 ;
+  int indexc16 ;
+  int indexs1 ;
+  int indexbit ;
+  int indexptr ;
+  struct _BufferRepeatCell *previous ;
+} BufferRepeatCell ;
+
+BufferRepeatCell *bufferRepeatTop = NULL ;
+
+void adStack_startRepeat() {
+  // Create (push) a new "buffers" repeat level:
+  BufferRepeatCell *newRepeatCell = (BufferRepeatCell *)malloc(sizeof(BufferRepeatCell)) ;
+  newRepeatCell->previous = bufferRepeatTop ;
+  // Also create (push) a new repeat level for the main stack:
+  startStackRepeat1() ;
+  // Push all local buffers on the main stack
+  // 3rd arg is 0 to deactivate the check for stack read-only zone:
+  pushNArray((char *)adi4buf, adi4ibuf*4, 0) ;
+  pushNArray((char *)adi8buf, adi8ibuf*8, 0) ;
+  pushNArray((char *)adr4buf, adr4ibuf*4, 0) ;
+  pushNArray((char *)adr8buf, adr8ibuf*8, 0) ;
+  pushNArray((char *)adc8buf, adc8ibuf*sizeof(ccmplx), 0) ;
+  pushNArray((char *)adc16buf, adc16ibuf*sizeof(cdcmplx), 0) ;
+  pushNArray((char *)ads1buf, ads1ibuf, 0) ;
+  pushNArray((char *)&adbitbuf, 4, 0) ;
+  pushNArray((char *)adptrbuf, adptribuf*sizeof(void *), 0) ;
+  newRepeatCell->indexi4 = adi4ibuf ;
+  newRepeatCell->indexi8 = adi8ibuf ;
+  newRepeatCell->indexr4 = adr4ibuf ;
+  newRepeatCell->indexr8 = adr8ibuf ;
+  newRepeatCell->indexc8 = adc8ibuf ;
+  newRepeatCell->indexc16 = adc16ibuf ;
+  newRepeatCell->indexs1 = ads1ibuf ;
+  newRepeatCell->indexbit = adbitibuf ;
+  newRepeatCell->indexptr = adptribuf ;
+  // Store current location as repeat location of new repeat level.
+  // Note that this repeat location protects below as read-only.
+  // Make the new repeat level the current repeat level  for the main stack:
+  startStackRepeat2() ;
+  // Make this new repeat level the current repeat level:
+  bufferRepeatTop = newRepeatCell ;
+}
+
+// Note: adStack_resetrepeat() forces exit from any internal
+//  checkpointed sequence, i.e. all nested push'es are forced popped.
+void adStack_resetRepeat() {
+  // First stage of reset repeat for the main stack:
+  resetStackRepeat1() ;
+  // Restore all local buffers:
+  adi4ibuf  = bufferRepeatTop->indexi4 ;
+  adi8ibuf  = bufferRepeatTop->indexi8 ;
+  adr4ibuf  = bufferRepeatTop->indexr4 ;
+  adr8ibuf  = bufferRepeatTop->indexr8 ;
+  adc8ibuf  = bufferRepeatTop->indexc8 ;
+  adc16ibuf = bufferRepeatTop->indexc16 ;
+  ads1ibuf  = bufferRepeatTop->indexs1 ;
+  adbitibuf = bufferRepeatTop->indexbit ;
+  adptribuf = bufferRepeatTop->indexptr ;
+  // 3rd arg is 0 to deactivate the check for stack read-only zone:
+  popNArray((char *)adptrbuf, adptribuf*sizeof(void *), 0) ;
+  popNArray((char *)&adbitbuf, 4, 0) ;
+  popNArray((char *)ads1buf,  ads1ibuf, 0) ;
+  popNArray((char *)adc16buf, adc16ibuf*sizeof(cdcmplx), 0) ;
+  popNArray((char *)adc8buf,  adc8ibuf*sizeof(ccmplx), 0) ;
+  popNArray((char *)adr8buf,  adr8ibuf*8, 0) ;
+  popNArray((char *)adr4buf,  adr4ibuf*4, 0) ;
+  popNArray((char *)adi8buf,  adi8ibuf*8, 0) ;
+  popNArray((char *)adi4buf,  adi4ibuf*4, 0) ;
+  // Second stage of reset repeat for the main stack:
+  resetStackRepeat2() ;
+}
+
+// Note: adStack_endrepeat() forces exit from any internal
+//  checkpointed sequence, i.e. all nested push'es are forced popped.
+void adStack_endRepeat() {
+  // Remove (pop) top repeat level for the main stack:
+  endStackRepeat() ;
+  // Remove (pop) top "buffer" repeat level:
+  BufferRepeatCell *oldRepeatCell = bufferRepeatTop ;
+  bufferRepeatTop = bufferRepeatTop->previous ;
+  free(oldRepeatCell) ;
+}
+
+void showBufferRepeatsRec(BufferRepeatCell *inRepeatStack, int type) {
+  if (inRepeatStack->previous) {showBufferRepeatsRec(inRepeatStack->previous, type) ; printf(" ; ") ;}
+  switch (type) {
+  case 1:
+    printf("%1i", inRepeatStack->indexi4) ;
+    break ;
+  case 2:
+    printf("%1i", inRepeatStack->indexi8) ;
+    break ;
+  case 3:
+    printf("%1i", inRepeatStack->indexr4) ;
+    break ;
+  case 4:
+    printf("%1i", inRepeatStack->indexr8) ;
+    break ;
+  case 5:
+    printf("%1i", inRepeatStack->indexc8) ;
+    break ;
+  case 6:
+    printf("%1i", inRepeatStack->indexc16) ;
+    break ;
+  case 7:
+    printf("%1i", inRepeatStack->indexs1) ;
+    break ;
+  case 8:
+    printf("%1i", inRepeatStack->indexbit) ;
+    break ;
+  case 9:
+    printf("%1i", inRepeatStack->indexptr) ;
+    break ;
+  }
+}
+
+void showBufferRepeats(BufferRepeatCell *inRepeatStack, int type) {
+  printf("        REPEATS:") ;
+  if (inRepeatStack)
+    showBufferRepeatsRec(inRepeatStack, type) ;
+  else
+    printf(" none!") ;
+}
+
+void showStackAndBuffers(char *locationName) {
+  int i ;
+  printf("%6s: ", locationName) ;
+  showStack() ;
+  printf("        I4:") ;
+  for (i=0 ; i<I4BUFSIZE ; ++i) {
+    if (i==adi4ibuf) printf(" | ") ;
+    printf(" %11i",adi4buf[i]) ;
+  }
+  showBufferRepeats(bufferRepeatTop, 1) ;
+  printf("\n") ;
+  printf("        I8:") ;
+  for (i=0 ; i<I8BUFSIZE ; ++i) {
+    if (i==adi8ibuf) printf(" | ") ;
+    printf(" %11i",adi8buf[i]) ;
+  }
+  showBufferRepeats(bufferRepeatTop, 2) ;
+  printf("\n") ;
+  printf("        R4:") ;
+  for (i=0 ; i<R4BUFSIZE ; ++i) {
+    if (i==adr4ibuf) printf(" | ") ;
+    printf(" %f",adr4buf[i]) ;
+  }
+  showBufferRepeats(bufferRepeatTop, 3) ;
+  printf("\n") ;
+  printf("        R8:") ;
+  for (i=0 ; i<R8BUFSIZE ; ++i) {
+    if (i==adr8ibuf) printf(" | ") ;
+    printf(" %f",adr8buf[i]) ;
+  }
+  showBufferRepeats(bufferRepeatTop, 4) ;
+  printf("\n") ;
+  printf("        C8:") ;
+  for (i=0 ; i<C8BUFSIZE ; ++i) {
+    if (i==adc8ibuf) printf(" | ") ;
+    printf(" %f",adc8buf[i]) ;
+  }
+  showBufferRepeats(bufferRepeatTop, 5) ;
+  printf("\n") ;
+  printf("        C16:") ;
+  for (i=0 ; i<C16BUFSIZE ; ++i) {
+    if (i==adc16ibuf) printf(" | ") ;
+    printf(" %f",adc16buf[i]) ;
+  }
+  showBufferRepeats(bufferRepeatTop, 6) ;
+  printf("\n") ;
+  printf("        STR:") ;
+  for (i=0 ; i<CHARBUFSIZE ; ++i) {
+    if (i==ads1ibuf) printf(" | ") ;
+    printf(" %c",ads1buf[i]) ;
+  }
+  showBufferRepeats(bufferRepeatTop, 7) ;
+  printf("\n") ;
+  printf("        BITS:%1i in %08x", adbitibuf, adbitbuf) ;
+  showBufferRepeats(bufferRepeatTop, 8) ;
+  printf("\n") ;
+  printf("        PTR:") ;
+  for (i=0 ; i<PTRBUFSIZE ; ++i) {
+    if (i==adptribuf) printf(" | ") ;
+    printf(" %x",adptrbuf[i]) ;
+  }
+  showBufferRepeats(bufferRepeatTop, 9) ;
+  printf("\n") ;
+}
+
+void showStackAndBuffersSize() {
+  showStackSize(adi4ibuf,adi8ibuf,adr4ibuf,adr8ibuf,adc8ibuf,adc16ibuf,ads1ibuf,adbitibuf,adptribuf) ;
+}

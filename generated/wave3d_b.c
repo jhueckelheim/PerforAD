@@ -11,22 +11,38 @@
    Plus diff mem management of: u:in *u:in **u:in u_1:in *u_1:in
                 **u_1:in u_2:in *u_2:in **u_2:in
 */
-void wave3d_b(double ***u, double ***ub, double ***u_1, double ***u_1b, double
-        ***u_2, double ***u_2b, double ***c, double D, int n) {
+void wave3d_b(double *u_vec, double *ub_vec, double *u_1_vec, double *u_1b_vec, double
+	      *u_2_vec, double *u_2b_vec, double *c_vec, double D, int n) {
+double (*u)[n][n] = (double (*)[n][n]) u_vec;
+double (*c)[n][n] = (double (*)[n][n]) c_vec;
+double (*u_1)[n][n] = (double (*)[n][n]) u_1_vec;
+double (*u_2)[n][n] = (double (*)[n][n]) u_2_vec;
+
+double (*ub)[n][n] = (double (*)[n][n]) ub_vec;
+double (*u_1b)[n][n] = (double (*)[n][n]) u_1b_vec;
+double (*u_2b)[n][n] = (double (*)[n][n]) u_2b_vec;
     int i;
     int j;
     int k;
     double tempb;
+#pragma omp parallel for private(i, j, k, tempb)
     for (i = n-2; i > 0; --i)
         for (j = n-2; j > 0; --j)
             for (k = n-2; k > 0; --k) {
                 tempb = D*c[i][j][k]*ub[i][j][k];
+		#pragma omp atomic
                 u_1b[i][j][k - 1] = u_1b[i][j][k - 1] + tempb;
+		#pragma omp atomic
                 u_1b[i][j][k] = u_1b[i][j][k] + 2.0*ub[i][j][k] - 6*tempb;
+		#pragma omp atomic
                 u_1b[i][j][k + 1] = u_1b[i][j][k + 1] + tempb;
+		#pragma omp atomic
                 u_1b[i][j - 1][k] = u_1b[i][j - 1][k] + tempb;
+		#pragma omp atomic
                 u_1b[i][j + 1][k] = u_1b[i][j + 1][k] + tempb;
+		#pragma omp atomic
                 u_1b[i - 1][j][k] = u_1b[i - 1][j][k] + tempb;
+		#pragma omp atomic
                 u_1b[i + 1][j][k] = u_1b[i + 1][j][k] + tempb;
                 u_2b[i][j][k] = u_2b[i][j][k] - ub[i][j][k];
             }

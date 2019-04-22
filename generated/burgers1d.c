@@ -1,6 +1,14 @@
-
 #ifndef TAPENADE
 #include <math.h>
+#else
+double fmax(double a, double b) {
+  if(a>b) return a;
+  else return b;
+}
+double fmin(double a, double b) {
+  if(a<b) return a;
+  else return b;
+}
 #endif
 #define Max(x,y) fmax(x,y)
 #define Min(x,y) fmin(x,y)

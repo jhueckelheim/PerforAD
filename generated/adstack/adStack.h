@@ -1,85 +1,77 @@
-
 #ifndef ADSTACK_LOADED
 #define ADSTACK_LOADED 1
 
-extern void pushcharacterarray(char *x, int n) ;
-extern void popcharacterarray(char *x, int n) ;
-extern void lookcharacterarray(char *x, int n) ;
+/** Push of int (4 bytes int) array */
+extern void pushInteger4Array(int *x, int n) ;
 
-extern void pushbooleanarray(char *x, int n) ;
-extern void popbooleanarray(char *x, int n) ;
-extern void lookbooleanarray(char *x, int n) ;
+/** Pop of int (4 bytes int) array */
+extern void popInteger4Array(int *x, int n) ;
 
-extern void pushinteger4array(int *x, int n) ;
-extern void popinteger4array(int *x, int n) ;
-extern void lookinteger4array(int *x, int n) ;
+/** Push of long (8 bytes int) array */
+extern void pushInteger8Array(long *x, int n) ;
 
-extern void pushinteger8array(long int *x, int n) ;
-extern void popinteger8array(long int *x, int n) ;
-extern void lookinteger8array(long int *x, int n) ;
+/** Pop of long (8 bytes int) array */
+extern void popInteger8Array(long *x, int n) ;
 
-extern void pushinteger16array(long long int *x, int n) ;
-extern void popinteger16array(long long int *x, int n) ;
-extern void lookinteger16array(long long int *x, int n) ;
+/** Push of float (4 bytes real) array */
+extern void pushReal4Array(float *x, int n) ;
 
-extern void pushreal4array(float *x, int n) ;
-extern void popreal4array(float *x, int n) ;
-extern void lookreal4array(float *x, int n) ;
+/** Pop of float (4 bytes real) array */
+extern void popReal4Array(float *x, int n) ;
 
-extern void pushreal8array(double *x, int n) ;
-extern void popreal8array(double *x, int n) ;
-extern void lookreal8array(double *x, int n) ;
+/** Push of double (8 bytes real) array */
+extern void pushReal8Array(double *x, int n) ;
 
-extern void pushreal16array(void *x, int n) ;
-extern void popreal16array(void *x, int n) ;
-extern void lookreal16array(void *x, int n) ;
+/** Pop of double (8 bytes real) array */
+extern void popReal8Array(double *x, int n) ;
 
-extern void pushreal32array(void *x, int n) ;
-extern void popreal32array(void *x, int n) ;
-extern void lookreal32array(void *x, int n) ;
+/** Push of char (byte) array */
+extern void pushCharacterArray(char *x, int n) ;
 
-extern void pushcomplex4array(void *x, int n) ;
-extern void popcomplex4array(void *x, int n) ;
-extern void lookcomplex4array(void *x, int n) ;
+/** Pop of char (byte) array */
+extern void popCharacterArray(char *x, int n) ;
 
-extern void pushcomplex8array(void *x, int n) ;
-extern void popcomplex8array(void *x, int n) ;
-extern void lookcomplex8array(void *x, int n) ;
+/*** There is no primitive complex type in C ***/
+/* extern void pushComplex8Array(ccmplx *x, int n) ; */
+/* extern void popComplex8Array(ccmplx *x, int n) ; */
+/* extern void pushComplex16Array(cdcmplx *x, int n) ; */
+/* extern void popComplex16Array(cdcmplx *x, int n) ; */
 
-extern void pushcomplex16array(void *x, int n) ;
-extern void popcomplex16array(void *x, int n) ;
-extern void lookcomplex16array(void *x, int n) ;
+/** Utility for adBuffer.c (mostly)
+ * Push an array of any type onto the main stack */
+extern void pushNArray(char *x, unsigned int nbChars, int checkReadOnly) ;
 
-extern void pushcomplex32array(void *x, int n) ;
-extern void popcomplex32array(void *x, int n) ;
-extern void lookcomplex32array(void *x, int n) ;
+/** Utility for adBuffer.c (mostly)
+ * Pop an array of any type from the main stack */
+extern void popNArray(char *x, unsigned int nbChars, int checkReadOnly) ;
 
-extern void pushpointer4array(void *x, int n) ;
-extern void poppointer4array(void *x, int n) ;
-extern void lookpointer4array(void *x, int n) ;
+/** Display the maximum size reached by the main AD stack */
+extern void adStack_showPeakSize() ;
 
-extern void pushpointer8array(void *x, int n) ;
-extern void poppointer8array(void *x, int n) ;
-extern void lookpointer8array(void *x, int n) ;
+/** Utility for adBuffer.c (mostly)
+ * Display the total amount of memory pushed */
+extern void showTotalTraffic(unsigned long long int localtraffic) ;
 
-extern void pushNarray(void *x, unsigned int nbChars) ;
-extern void popNarray(void *x, unsigned int nbChars) ;
-extern void lookNarray(void *x, unsigned int nbChars) ;
+/** Utility for adBuffer.c (mostly)
+ * Display in detail the contents of the AD stack */
+extern void showStack() ;
 
-extern void resetadlookstack_() ;
+/** Utility for adBuffer.c */
+extern void showStackSize(int i4i, int i8i, int r4i, int r8i, int c8i, int c16i, int s1i, int biti, int ptri) ;
 
-extern void printbigbytes(long int nbblocks, long int blocksz, long int nbunits) ;
+/** Utility for adBuffer.c */
+extern void startStackRepeat1() ;
 
-extern void printctraffic_() ;
+/** Utility for adBuffer.c */
+extern void startStackRepeat2() ;
 
-extern void printtopplace_() ;
+/** Utility for adBuffer.c */
+extern void resetStackRepeat1() ;
 
-extern void printstackmax_() ;
+/** Utility for adBuffer.c */
+extern void resetStackRepeat2() ;
 
-extern void printlookingplace_() ;
-
-extern void showrecentcstack_() ;
-
-extern void getbigcsizes_(int *nbblocks, int *remainder, int *nbblockslook, int *lookremainder) ;
+/** Utility for adBuffer.c */
+extern void endStackRepeat() ;
 
 #endif
