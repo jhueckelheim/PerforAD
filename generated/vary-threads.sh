@@ -1,6 +1,6 @@
 COMMAND="$@"
 
-for i in {0..8}
+for i in {0..5}
 do
     THREADS=$((2**$i))
     C="OMP_NUM_THREADS=$THREADS $COMMAND"

@@ -1,5 +1,5 @@
 CC=icc
-CFLAGS=-O3 -fopenmp -xmic-avx512
+CFLAGS=-O3 -fopenmp -xhost
 EXTRA_SOURCES=adstack/adBuffer.c adstack/adStack.c
 INCLUDES=-I adstack/
 
